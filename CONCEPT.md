@@ -1,0 +1,616 @@
+# KubeHarness — Concept and Planning Baseline
+
+> **Document status:** Proposed system concept, not an implementation specification.  
+> **Last reviewed:** 2026-11-02.  
+> **Audience:** Maintainer, reviewers, contributors, and pstack planning agents.  
+> **Source of truth for:** Product boundary, accepted direction, candidate requirements, lifecycle and platform architecture, verification experiments, success measures, and open questions.  
+> **Companion:** [README.md](README.md) provides the public-facing introduction.
+
+## 1. Executive concept
+
+**KubeHarness is a proposed Go-native platform integration testing harness for owned, disposable Kubernetes environments.** It should let an engineer test the behavior of a real application *through its deployed platform topology* rather than validate only manifests, mock external boundaries, or maintain a shared test cluster.
+
+A test may need to create an ephemeral cluster; install a Gateway API controller, service mesh, and/or other components; deploy PostgreSQL or Redis; perform schema migrations; deploy services; await readiness; call an HTTP or MCP endpoint; verify observable behavior; collect failure evidence; and tear everything down. The harness coordinates those steps while the application team owns application-specific configuration and assertions.
+
+**Product promise:** *Describe the behavior you expect. KubeHarness manages the test environment and produces the evidence.*
+
+**Positioning:** Platform integration testing, not a general-purpose Kubernetes provisioning tool, Gateway API conformance suite, generic CI orchestrator, database framework, AI agent framework, or LLM answer-quality evaluator.
+
+### Why this project is separate from kubecheck
+
+The prior [kubecheck](https://github.com/ogarciacar/kubecheck) project demonstrated embedding Kind cluster provisioning in Go tests. Its review identified lifecycle gaps (partial failure cleanup, ignored cleanup errors, fixed readiness waits, brittle port assertions), an outdated README, and tight coupling of package tests to Docker. KubeHarness starts in a **new repository**, with no promise of import/API compatibility and no code automatically reused. kubecheck may be retired later as a separate action, not as a prerequisite or automatic deletion.
+
+The larger opportunity is moving from **cluster provisioner** to **behavior-oriented test harness**, without building a generic infrastructure platform.
+
+## 2. Decisions and boundaries
+
+These are the **agreed direction** from concept discussions. Detailed contracts remain subject to pstack design review and implementation evidence.
+
+| ID | Decision | Status | Rationale |
+| --- | --- | --- | --- |
+| D01 | Begin in the independent `ogarciacar/kubeharness` repository | Agreed | No legacy module migration or API compatibility burden |
+| D02 | Go-first library using standard `testing.T` workflows | Agreed direction | Meet developers where integration tests already run |
+| D03 | KubeHarness provisions and **owns ephemeral Kind clusters** in v1.x | Agreed | Reliable isolation and cleanup; repeatable local/CI execution |
+| D04 | **No tests against existing staging clusters in v1.x** | Explicitly deferred to **v2.0.0** | Avoid premature RBAC, ownership, mutation safety, and shared-state complexity |
+| D05 | **Kubernetes Gateway API** is the default gateway resource model | Agreed | Portable, standard resources where possible |
+| D06 | **Envoy Gateway** is the default Gateway API controller | Agreed | Concrete reference implementation for v1 gateway experiments |
+| D07 | Agentgateway gets its **own optional controller profile**; do not automatically install Envoy Gateway beside it | Agreed | Avoid redundant controllers and unintended topology |
+| D08 | Agent Router profile **extends Envoy Gateway** | Agreed | Match actual Agent Router deployment architecture |
+| D09 | Profile priority: `minimal`, `gateway-api` P0; `gateway-agentgateway` P1; `mesh-istio` and `gateway-agent-router` P2 | Agreed roadmap priority | Prove baseline then Gateway API extensibility and agentic traffic |
+| D10 | Actual dependencies and deterministic local mocks, not live paid LLM APIs, for reference tests | Agreed direction | Reproducibility and zero provider credential dependency |
+| D11 | Tests verify both **controller/resource state** and **data-plane behavior** | Agreed direction | A reconciled manifest alone is not a behavioral success |
+| D12 | Cleanup, diagnostics, cancellation and failure preservation are core, not afterthoughts | Agreed direction | The tool's value depends on infrastructure ownership |
+| D13 | Only an initial, appropriately scoped **Go library** is assumed; CLI, YAML schema and plug-in SDK are *not* committed | Open design | Avoid building an unused configuration language or second product |
+| D14 | Explicit profile version compatibility and pinned test images/dependencies | Agreed direction | Avoid nondeterministic upstream drift |
+
+**Clarification:** The Kubernetes **Gateway API is an API specification**, not a built-in gateway data plane. Using a “native Gateway API” does not remove the need for a controller/proxy. Envoy Gateway is the initial default implementation.
+
+### Out of scope in v1.x
+
+- Targeting, changing, or inspecting pre-existing staging/production Kubernetes clusters as test targets; include the *analysis and ownership model* only in v2.0.0 planning.
+- Real cloud parity claims (load balancers, multi-zone resilience, managed databases, cloud identity or storage durability); a local Kind topology verifies selected behavior, not complete production equivalence.
+- Multi-cluster orchestration, fleet management, remote environment reservations, or shared cluster tenancy.
+- General Gateway API conformance certification, gateway implementation development, or replacing upstream test suites.
+- A full test DSL, remote hosted service, dashboard, generic plugin marketplace or mandatory YAML test framework.
+- LLM answer scoring, prompt evaluation, reasoning assessment, or agent task-quality benchmarking. Those concerns belong to tools such as evalkit; KubeHarness tests connectivity and platform behavior.
+- Automatically provisioning external cloud providers, identity systems or paid model endpoints for baseline tests.
+
+## 3. System context and success boundary
+
+### Actors
+
+- **Application developer:** Defines workload/dependency fixtures, triggers Go tests, asserts behavior.
+- **Platform / DevEx engineer:** Defines platform profiles and platform policy experiments.
+- **CI runner:** Provides a host with the required container runtime/resources, runs tests, and retains reports.
+- **Maintainer / pstack:** Reviews requirements, designs slices, updates architecture and acceptance evidence.
+
+### External systems and dependencies
+
+- Host OS and Docker-compatible runtime; Kind creates a Kubernetes cluster in containers.
+- Kubernetes API server and controllers; Gateway API CRDs where needed.
+- Optional Envoy Gateway, Agentgateway, Istio, Agent Router, PostgreSQL, Redis, mock HTTP/LLM/MCP services.
+- Helm/manifests/OCI images, local networking, container image registry or an explicitly preloaded image cache.
+- Go's `testing` lifecycle and CI artifact storage.
+
+### Observable outputs
+
+- Application/platform assertions with pass/fail status and reproducible inputs.
+- Cluster/profile/workload readiness or reconciliation observations.
+- Failure classification and supporting evidence (logs, events, resource status, protocol traces where safe).
+- Infrastructure cleanup outcome reported separately from test outcome.
+- Reproducibility, timing, resource usage and developer-effort measurements for framework validation.
+
+```mermaid
+flowchart LR
+    Dev["Application / Platform engineer"] -->|"Go test + fixtures + assertions"| H["KubeHarness"]
+    CI["CI job"] -->|"Runs tests / captures artifacts"| H
+    H -->|"Create / delete"| K["Kind / Docker"]
+    H -->|"Apply / watch / inspect"| API["Ephemeral Kubernetes API"]
+    K --> API
+    API --> C["Controllers / workloads / dependencies"]
+    H -->|"HTTP / MCP / probe traffic"| C
+    C -->|"Behavior + events + logs"| H
+    H -->|"Results + diagnostics + cleanup status"| Dev
+    H -->|"Reports"| CI
+```
+
+**System completion criterion:** For a chosen scenario, a developer can identify the owned environment, expected behavior, observed outcome, failure evidence, and cleanup result without operating a shared Kubernetes environment by hand.
+
+## 4. Required capabilities (candidate contracts)
+
+These describe **intended behavior**, not final public types or signatures.
+
+| ID | Capability | Candidate observable acceptance contract |
+| --- | --- | --- |
+| F01 | Ephemeral cluster ownership | Harness creates a uniquely identified Kind cluster and tracks every allocated resource |
+| F02 | Profile preparation | Profile prerequisites/compatibility checked; dependencies installed in a deterministic order; readiness observed |
+| F03 | Workload setup | Apply declared Kubernetes resources and/or pinned Helm releases; associate resources with the current scenario |
+| F04 | Dependencies | Run services such as PostgreSQL, Redis, mock LLMs and MCP backends with explicit readiness and schema/seed steps |
+| F05 | Waiting/observation | Observe Jobs, Deployments, Pods, Gateway API conditions, controller health, and test-specific usable readiness without fixed sleeps |
+| F06 | Network access | Resolve a reachable endpoint (via controlled forwarding or mapping) and inject protocol traffic without assuming a cloud LoadBalancer |
+| F07 | Assertions | Support caller-authored Go assertions over actual HTTP/MCP responses, resource state and backend effects |
+| F08 | Failure diagnostics | Capture bounded, structured evidence before cleanup when setup, execution or teardown fails |
+| F09 | Teardown | Attempt idempotent, deadline-bounded cleanup after *any* failure, preserving original errors and cleanup errors |
+| F10 | Cancellation | Respect context deadlines and Go test cleanup semantics, never block indefinitely on a non-responsive resource |
+| F11 | Isolation | Prevent unintentional collisions in names, ports, namespaces, test data and gateway/global policy resources |
+| F12 | Reports | Preserve separate verification, environment, diagnostics and cleanup outcomes for local and CI use |
+| F13 | Version pinning | Record Kind/node image, Kubernetes, controller/Helm/CRD and fixture versions (and image digests if possible) |
+
+### Nonfunctional expectations
+
+- **Predictability:** fixed seed/test inputs and explicit versions; repeat runs with recorded environment metadata.
+- **Resource safety:** no leaked owned clusters after expected failure modes; cleanup errors cannot be silently dropped.
+- **Diagnostic fidelity:** distinguish unreachable API, reconciliation failure, unready workload, denied request, application assertion failure, timeout, and cleanup failure.
+- **Boundedness:** configurable deadlines on cluster setup, workload readiness, execution, diagnostics and teardown.
+- **Compatibility:** check Kubernetes/CRD/controller versions before installing an incompatible profile.
+- **Security:** use test-only credentials; redact Secrets, tokens, authorization headers and private payloads from artifacts; no unsafe automatic deletion of unknown resources.
+- **Simplicity:** baseline does not require external accounts, paid models or an always-on service.
+- **Runtime efficiency:** compare cold vs warm setup, but don't sacrifice correctness for premature shared-cluster reuse.
+
+## 5. Architecture and internal boundaries
+
+```mermaid
+flowchart TB
+    GO["Go testing.T / application assertions"] --> API["KubeHarness public Go API — proposed"]
+    API --> ORCH["Test lifecycle coordinator"]
+    ORCH --> CL["Owned cluster manager"]
+    ORCH --> PF["Profile installer / compatibility check"]
+    ORCH --> WL["Workload and dependency manager"]
+    ORCH --> OB["Readiness and reconciliation observer"]
+    ORCH --> TD["Protocol traffic drivers"]
+    ORCH --> EV["Evidence and diagnostics collector"]
+    ORCH --> CLEAN["Cleanup manager"]
+    CL --> K["Ephemeral Kind / Kubernetes"]
+    PF --> K
+    WL --> K
+    OB --> K
+    TD --> K
+    EV --> K
+    CLEAN --> K
+    PF --> PC["Envoy Gateway / Agentgateway / Istio / Agent Router"]
+    WL --> DS["Applications + PostgreSQL + Redis + mock backends"]
+```
+
+### Separation of responsibility
+
+| Component | Owns | Does **not** own |
+| --- | --- | --- |
+| Cluster manager | Create/delete, lifecycle ID, kubeconfig, host access, allocated resources | Workload business semantics |
+| Profile manager | CRD/controller installation, compatibility, profile-specific status checks | Common test assertions, arbitrary production infrastructure |
+| Workload manager | Manifest/Helm apply, dependencies, migrations/Jobs, isolation | Implementing PostgreSQL, Redis or the gateway |
+| Readiness observer | Time-bounded resource/status checks; differentiated causes | Declaring that Deployment Ready implies the business API works |
+| Test drivers | HTTP and optional MCP traffic from intentional network origins | Evaluating response faithfulness/semantic correctness |
+| Evidence collector | Resource snapshots, logs, events, requests and reproducibility metadata | Secrets, indefinite log streaming, uncontrolled PII |
+| Cleanup manager | Idempotent, bounded disposal of owned resources | Deleting user-managed/staging resources |
+
+**Key rule:** The public test contract should express *observable outcomes*, while platform-specific CRDs and installation quirks remain inside profiles and fixtures. Do not promise cross-controller feature portability where Gateway API has no standard contract (for example, AI token rate limits or MCP tool authorization).
+
+### Proposed setup / verification sequence
+
+```mermaid
+sequenceDiagram
+    participant Test as Go Test
+    participant H as KubeHarness
+    participant Kind as Kind
+    participant K8s as Kubernetes API
+    participant P as Platform Controller
+    participant App as Workload/Dependency
+    Test->>H: New owned test environment
+    H->>Kind: Create cluster (pinned version)
+    Kind-->>H: Kubeconfig and cluster identity
+    H->>K8s: Install profile CRDs and controllers
+    K8s-->>H: Resource status
+    H->>P: Observe installed controller readiness
+    P-->>H: Ready / programmed conditions
+    H->>K8s: Deploy dependency, migration and application fixtures
+    H->>App: Wait for usable readiness
+    Test->>H: Execute scenario
+    H->>App: Send traffic through chosen boundary
+    App-->>H: Observed response and backend effects
+    H-->>Test: Verification observations
+    opt Failed setup or test
+      H->>K8s: Collect resource state, events and logs
+    end
+    H->>Kind: Delete owned cluster (bounded cleanup)
+    H-->>Test: Verification result, evidence and cleanup outcome
+```
+
+### Explicit deployment and network boundary
+
+A test must declare **where traffic originates**. A host-side request through a port forward is not the same as a Pod-to-Pod request subject to Istio policies, and a direct Service call is not the same as calling through Gateway API. A traffic driver must label its origin and endpoint to avoid false confidence.
+
+```mermaid
+flowchart LR
+    Client["Host-side test client"] -->|"Gateway access"| GW["Gateway API data plane"]
+    GW --> ORD["Orders Service"]
+    ORD --> DB[("PostgreSQL")]
+    Probe["In-cluster probe workload"] -->|"East-west call / mesh policy"| ORD
+    Admin["Go Kubernetes client"] -.->|"Observe resources, not business traffic"| ORD
+```
+
+## 6. Lifecycle state machines and invariants
+
+### 6.1 Owned environment lifecycle — candidate states
+
+State names and transitions are **conceptual**. Use them to derive failure and cleanup tests before choosing implementation types.
+
+```mermaid
+stateDiagram-v2
+    [*] --> NEW
+    NEW --> VALIDATING: Start
+    VALIDATING --> PROVISIONING: Preconditions satisfied
+    VALIDATING --> FAILED: Invalid environment/profile
+    PROVISIONING --> PREPARING: Cluster created
+    PROVISIONING --> FAILED: Provisioning fails
+    PREPARING --> READY: Profile and required dependencies usable
+    PREPARING --> FAILED: Setup or readiness fails
+    READY --> RUNNING: Begin verification
+    RUNNING --> COLLECTING: Verification failed / diagnostics requested
+    RUNNING --> CLEANING: Verification completed successfully
+    RUNNING --> COLLECTING: Timeout or cancellation
+    COLLECTING --> CLEANING: Evidence bounded/collected
+    FAILED --> COLLECTING: Resources possibly allocated
+    CLEANING --> TERMINATED: Cleanup attempted
+    TERMINATED --> [*]
+    note right of TERMINATED
+      Report test outcome separately
+      from diagnostic and cleanup outcomes
+    end note
+```
+
+**Interpretation:** `FAILED` describes the primary setup or execution failure, not the last resource lifecycle action. If any resource was allocated, cleanup is still required. The report may show `verification=failed`, `diagnostics=partial` and `cleanup=failed` simultaneously; one outcome must not erase the others. Some preflight failures may have no resources to clean.
+
+### 6.2 Dependency readiness lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> DECLARED
+    DECLARED --> APPLIED: Kubernetes resources accepted
+    APPLIED --> RECONCILING: Controller observes resources
+    RECONCILING --> READY: Readiness condition plus usable check
+    RECONCILING --> FAILED: Error / deadline
+    READY --> MIGRATING: Optional schema or initialization Job
+    MIGRATING --> USABLE: Job succeeded and service usable
+    MIGRATING --> FAILED: Job failed / deadline
+    READY --> USABLE: No initialization required
+    FAILED --> [*]
+    USABLE --> [*]
+```
+
+A Pod being `Running`, a Deployment being `Available`, a Gateway being `Programmed`, and a PostgreSQL server accepting connections represent **different conditions**. Tests must observe the condition needed for the next operation.
+
+### 6.3 Critical invariants and failure paths
+
+- **Ownership:** every destructive operation targets a resource tracked as created/owned by this harness instance; no preexisting cluster targets in v1.x.
+- **Setup order:** prerequisites before CRDs, CRDs before custom resources, controller readiness before relying on reconciliation, database readiness before migrations, migrations before application verification.
+- **Partial allocation:** a failed cluster create, controller install, kubeconfig initialization, image load or port mapping cannot silently abandon previously allocated resources.
+- **Idempotence:** repeated cleanup calls must be safe, within a bounded deadline, and must preserve any cleanup errors.
+- **Cancellation:** caller cancellation ends verification but still triggers best-effort cleanup under an independently bounded cleanup context.
+- **Evidence ordering:** collect relevant diagnostics before removing resources, subject to a maximum evidence/cleanup time budget.
+- **Result integrity:** record primary cause, secondary diagnostics failure, and cleanup failure independently; preserve partial observations.
+- **Port allocation:** do not rely on “get free port, release it, assume it stays free” as an exclusive reservation. The access strategy must handle races and retries.
+- **Isolation:** shared cluster resources (GatewayClass, CRDs, mesh-wide policies) require explicit suite ownership and collision protection; namespaces alone do not isolate them.
+- **No indefinite waits:** controller, Job, network and teardown loops are context-bound and use watch/poll with recorded last observed conditions.
+
+## 7. Platform profiles and compatibility
+
+A **profile** is a test environment recipe, not an independently managed cluster and not a claim that every provider supports the same feature set.
+
+```mermaid
+flowchart TB
+    H["KubeHarness core"] --> PR["Platform profile contract"]
+    PR --> M["minimal: Kubernetes only"]
+    PR --> EG["gateway-api: Envoy Gateway"]
+    PR --> AG["gateway-agentgateway: Agentgateway controller"]
+    PR --> IS["mesh-istio: Istio"]
+    PR --> AR["gateway-agent-router: Envoy Gateway + Agent Router"]
+    AG --> MCP["MCP / AI policies and backends"]
+    AR --> LLM["Mock OpenAI-compatible providers + optional Redis"]
+    IS --> EW["Service identity, mTLS and east-west traffic"]
+```
+
+| Priority | Profile | Installs / controls | Intended common contract | Extension-specific work |
+| --- | --- | --- | --- | --- |
+| P0 | `minimal` | Kubernetes + application/dependency fixtures | Creation, deployment, jobs, readiness, cleanup | DB/Redis setup supplied by fixtures |
+| P0 | `gateway-api` | Gateway API CRDs + **Envoy Gateway** | `GatewayClass`, `Gateway`, `HTTPRoute`, `ReferenceGrant`, conditions, external HTTP behavior | Envoy installation/config only |
+| P1 | `gateway-agentgateway` | Agentgateway Kubernetes controller/proxy | Supported Gateway API behavior and request transport | `AgentgatewayBackend` / `AgentgatewayPolicy`, MCP auth/federation |
+| P2 | `mesh-istio` | Istio service mesh, initially sidecar mode | In-cluster calls, identity and service reachability | `PeerAuthentication`, `AuthorizationPolicy`, traffic policies |
+| P2 | `gateway-agent-router` | Envoy Gateway **plus** Agent Router | Gateway traffic + application behavior | `AIGatewayRoute`, `AIServiceBackend`, provider routing/quotas |
+
+### Profile contract candidates
+
+A profile must specify a **pinned compatible matrix** of Kubernetes/node image, Gateway API CRDs, controller/chart/app version and fixture images. It must expose:
+
+1. **Preflight:** runtime availability, resources and compatibility; no writes to an existing user cluster.
+2. **Install:** create CRDs/controllers and required namespace-scoped services, with tracked ownership.
+3. **Observe:** declare controller-specific readiness/status probes and a usable endpoint resolution strategy.
+4. **Configure:** apply portable Gateway API resources and versioned extension CRDs only when supported.
+5. **Diagnose:** identify relevant Pods, CRDs, policies, Services and logs to collect on failure.
+6. **Dispose:** hand every allocated resource to cluster teardown, with an optional orderly stop sequence where useful.
+
+For v1, the simplest implementation may be **statically registered profiles** rather than a generic plugin registry. Do not prematurely freeze a YAML profile schema or provider interface. Evaluate typed Go fixtures, declarative recipes, and hybrid approaches during planning.
+
+### Version requirements to verify at implementation time
+
+As of this document's review, Agent Router documents a minimum **Kubernetes 1.32** and **Envoy Gateway 1.9.2** for its Kubernetes deployment. Agentgateway's current Kubernetes docs describe its own controller and Gateway API/Agentgateway resources. **Do not inherit kubecheck's pinned Kubernetes 1.30.10**. Recheck all version minimums when each profile is implemented and pin an exact tested combination; documentation versions can change.
+
+### Kubernetes services and data dependencies
+
+Database and cache dependencies should be first-class **workload fixtures**, not database implementations inside the harness. A common flow is:
+
+```mermaid
+flowchart TD
+    DB["Deploy PostgreSQL + Service + Secret"] --> DBR["Database accepts connections"]
+    DBR --> MIG["Run schema migration Job"]
+    MIG --> APP["Deploy Orders API"]
+    APP --> READY["Application usable readiness"]
+    READY --> REQ["Execute order request"]
+    REQ --> ROW["Verify persisted database row"]
+```
+
+Initially prefer in-cluster dependencies for Kubernetes integration behavior. Testcontainers could be a complementary option later, but introducing an external-container dependency model is not required for the first slice. For throughput, consider suite-level cluster reuse only with proven data and policy isolation; cluster-per-scenario is safer but more expensive.
+
+## 8. Verification experiment catalog
+
+Each experiment below is a **candidate**. It becomes an implementation commitment only after pstack derives the exact fixture contract, environment compatibility, oracle, baseline, and evidence required. IDs are stable planning handles.
+
+### P0 — `minimal`
+
+| ID | Candidate experiment | Intended value / hypothesis | Observed oracle | Failure injection / evidence |
+| --- | --- | --- | --- | --- |
+| **M01** | Orders API + PostgreSQL + migration Job | Multi-component Kubernetes integration can be reproducible without shared infra | Request yields 201; expected row persisted; migration complete; all owned resources disposed | Break migration; collect Job status/logs, Pod events, app logs, cleanup result |
+| **M02** | Dependency readiness and failure classification | Harness does not mistake a running Pod for a usable dependency | Test never enters business verification while DB connection/migration is unhealthy; root cause classified | Unreachable DB or failed schema Job; inspect readiness history and error category |
+| **M03** | Isolation and lifecycle failure | Concurrent or consecutive tests cannot leak/contaminate one another | Unique names/data; deliberate assertion failure/cancellation leaves no owned cluster after bounded cleanup | Force failure at selected setup phases; compare Docker/Kind resource inventory before/after |
+
+**Flagship:** M01; **non-negotiable lifecycle gate:** M03. Reuse a simple Orders service with a stable HTTP contract and deterministic data. Avoid production databases or live remote dependencies.
+
+### P0 — `gateway-api` (Envoy Gateway default)
+
+| ID | Candidate experiment | Intended value / hypothesis | Observed oracle | Failure injection / evidence |
+| --- | --- | --- | --- | --- |
+| **G01** | Orders/Payments HTTP routing through Envoy Gateway | End-to-end platform route works, not just Deployment readiness | Correct response and backend identity for distinct hosts/paths | Wrong target port/hostname; Gateway/HTTPRoute status, Envoy logs, backend request count |
+| **G02** | Cross-namespace `ReferenceGrant` | Controller enforces cross-namespace reference permission | Without grant: unresolved reference and traffic cannot reach backend; after grant: status and traffic succeed | Remove/reapply grant; record `ResolvedRefs` where available and actual data plane result |
+| **G03** | Live HTTPRoute reconfiguration | Status and data-plane routing converge after updates | With 100/0 then 0/100 weights, requests consistently reach selected backend after readiness | Update route during traffic; capture transition time and backend IDs |
+
+**Flagship:** G02, because it exercises reconciliation, network authorization and traffic. Do not assert that an invalid backend produces exactly HTTP 403: controller and proxy failure responses vary. Observe conditions and failed forwarding to the protected backend instead. Start G03 with deterministic 100/0 changes rather than noisy statistical traffic splits.
+
+### P1 — `gateway-agentgateway`
+
+| ID | Candidate experiment | Intended value / hypothesis | Observed oracle | Failure injection / evidence |
+| --- | --- | --- | --- | --- |
+| **A01** | MCP discovery/invocation behind Gateway API | MCP over Kubernetes routing reaches a real tool backend | `tools/list` includes `sum`; `tools/call sum(40,2)` yields 42 | Break Service path/appProtocol; collect route/backend status and MCP connection errors |
+| **A02** | Identity-based MCP tool authorization | Gateway policies enforce both discovery filtering and direct call authorization | Reader sees/calls `read_order` but not `delete_order`; admin can use both; unauthorized direct invocation denied | Swap JWT claims/expiry; capture tool lists, policy status, backend invocation counter |
+| **A03** | Federated MCP tools | Multiple MCP Services can present one usable endpoint without name collisions | Tool discovery includes distinct tools; calls reach correct backend with expected results | Break one backend; observe policy/route and protocol behavior, including failure semantics |
+
+**Flagship:** A02. Inspired by Agentgateway's [MCP authorization example](https://github.com/agentgateway/agentgateway/blob/main/examples/mcp-authorization/README.md) (JWT claims plus CEL policy) and [MCP multiplex example](https://github.com/agentgateway/agentgateway/blob/main/examples/mcp-multiplex/README.md). **Caution:** These example directories use standalone configuration in places. Implement Kubernetes tests using the pinned controller's documented Gateway API / `AgentgatewayPolicy` / `AgentgatewayBackend` features; independently verify that each proposed policy and federation feature exists in that Kubernetes release. Do not assume 1:1 config portability.
+
+Suggested topology:
+
+```mermaid
+flowchart LR
+    Client["MCP client with test JWT"] --> GW["Agentgateway Kubernetes proxy"]
+    GW --> Calc["calculator-mcp: sum"]
+    GW --> Ord["orders-mcp: read_order/delete_order"]
+    Ord --> API["Orders Service"]
+    API --> PG[("PostgreSQL")]
+```
+
+### P2 — `mesh-istio`
+
+| ID | Candidate experiment | Intended value / hypothesis | Observed oracle | Failure injection / evidence |
+| --- | --- | --- | --- | --- |
+| **I01** | Workload identity authorization | Real east-west access follows declared ServiceAccount principals | Orders allowed to call Payments; unapproved workload denied and no backend invocation | Modify `AuthorizationPolicy`; collect principal, policy, proxy and service logs |
+| **I02** | Strict mTLS | TLS enforcement is observed at the network boundary, not assumed from YAML | Meshed caller succeeds; unmeshed plaintext caller cannot reach protected workload | Change `PeerAuthentication` and caller identity; capture proxy connection evidence |
+| **I03** | Service traffic shifting | Runtime mesh policy changes determine backend version | 100% v1 then 100% v2 reaches the expected version after reconciliation | Deliberately misconfigure subset labels; collect route/policy and destination counters |
+
+**Flagship:** I01. Start with sidecar mode. Ambient-mode behavior should be separately assessed because waypoint routing and L7 enforcement change the request path. An in-cluster probe is necessary; a host port-forward bypasses key service-mesh policy enforcement paths.
+
+### P2 — `gateway-agent-router` (Envoy Gateway + Agent Router)
+
+| ID | Candidate experiment | Intended value / hypothesis | Observed oracle | Failure injection / evidence |
+| --- | --- | --- | --- | --- |
+| **R01** | Model routing to local mock providers | AI-specific routing selects the intended backend | Header/model selection maps to correct mock backend; valid OpenAI-compatible response | Wrong model mapping; collect `AIGatewayRoute`, backend status, proxy logs, invocation counters |
+| **R02** | Provider fallback on controlled failure | Real proxy retry/fallback configuration works with no paid AI account | With fallback disabled primary failure propagates; when enabled secondary returns 200 and is called | Primary fails with configured retryable status/connection error; collect attempt counts and route policy |
+| **R03** | Tenant-aware token quota backed by Redis | Per-tenant token usage is accounted and isolated in a multi-component stack | Tenant A crosses allowance and subsequent request gets 429; tenant B remains allowed | Simulate deterministic completion usage; inspect rate-limit service, Redis and response metadata |
+
+**Flagship:** R02. Inspired by [Agent Router provider fallback](https://github.com/theagentrouter/agent-router/tree/main/examples/provider_fallback), including an `AIGatewayRoute` with prioritized backends and an Envoy Gateway `BackendTrafficPolicy`. The upstream E2E test uses AWS credentials for the healthy fallback. Adapt this to **two local OpenAI-compatible mock backends**, with one deliberately failing; no cloud secret or network required.
+
+R03 is inspired by [token rate limiting](https://github.com/theagentrouter/agent-router/tree/main/examples/token_ratelimit) and the [upstream Go E2E test](https://github.com/theagentrouter/agent-router/blob/main/tests/e2e/token_ratelimit_test.go), which drives synthetic token usage and a Redis-backed rate-limiting service. Respect **post-response usage accounting**: a request that *causes* an allowance to be exceeded may be admitted, while a later request is rejected. Use stable tenant IDs and ensure accounting has settled before asserting the next request.
+
+```mermaid
+flowchart TB
+    Test["Deterministic OpenAI-compatible request"] --> Router["Agent Router + Envoy Gateway"]
+    Router --> A["Primary mock provider: controlled 503"]
+    Router -->|"Configured fallback"| B["Secondary mock provider: controlled 200"]
+    Router --> Redis[("Optional Redis quota state")]
+```
+
+### Experiment prioritization and dependency map
+
+```mermaid
+flowchart LR
+    L["Lifecycle foundation"] --> M01["M01 Orders + PostgreSQL"]
+    L --> M03["M03 Cleanup/isolation"]
+    M01 --> G01["G01 Gateway routing"]
+    G01 --> G02["G02 ReferenceGrant"]
+    G01 --> G03["G03 Route update"]
+    G02 --> A01["A01 MCP traffic"]
+    A01 --> A02["A02 MCP authorization"]
+    A01 --> A03["A03 MCP federation"]
+    L --> I01["I01 Istio authorization"]
+    G01 --> R01["R01 Model routing"]
+    R01 --> R02["R02 Fallback"]
+    R01 --> R03["R03 Token quotas"]
+```
+
+The graph shows **suggested prerequisite knowledge**, not necessarily hard implementation dependencies. In particular, `mesh-istio` can develop independently of the gateway profiles once the lifecycle layer is mature.
+
+## 9. Verification methodology: prove the harness, not only the gateway
+
+An experiment that passes proves that an upstream component behaved correctly **in that test environment**. It does *not automatically* prove KubeHarness adds value over Kind + Helm + kubectl + plain Go tests.
+
+### Measurement dimensions
+
+| Dimension | Observable measure | Baseline / comparison |
+| --- | --- | --- |
+| Reproducibility | Successful, failed and flaky runs with pinned dependencies | Repeated clean Kind runs (initial **20-run screening heuristic**, not statistical assurance) |
+| Lifecycle correctness | Leak count, cleanup errors, cancellation behavior, orphaned containers/ports | Manual Kind teardown plus targeted fault injection |
+| Diagnostic usefulness | Whether captured evidence identifies the known root cause | Baseline CI logs/kubectl manual triage |
+| Developer effort | Lines/steps of test setup, maintenance, manual commands and cognitive burden | Plain Kind/Helm/kubectl/Go implementation of same scenario |
+| Runtime cost | Cold/warm setup and execution times, CPU/memory, images pulled | Equivalent baseline topology without harness wrapper |
+| Behavioral fidelity | Correct positive/negative assertions, backend invocation counts, control/data plane agreement | Predefined oracle unaffected by implementation |
+
+### Recommended experiment protocol
+
+1. **Freeze** test scenario, versions/images, fixtures, inputs and observable oracles before running the framework implementation.
+2. Build a **baseline** for the same scenario using existing tools. Do not compare a richer KubeHarness test to a simpler baseline.
+3. Run the test on fresh ephemeral infrastructure; record setup, verification, evidence and teardown separately.
+4. Inject known failures (bad secret, failed migration, invalid `ReferenceGrant`, rejected JWT, primary LLM 503, cancellation) and inspect whether evidence supports the correct diagnosis.
+5. Check Docker/Kind resources after the run; report leaks and uncertain disposal explicitly.
+6. Repeat on pinned versions and compute observations; label run variance rather than asserting reliability from a small sample.
+7. Decide **accept / revise / defer** based on evidence and whether the extra abstraction demonstrably reduces developer work or improves diagnostics.
+
+**Do not invent fixed speed or pass-rate thresholds yet.** Establish a baseline first, then choose a meaningful decision gate. Nevertheless, a leaked test-owned cluster or concealed cleanup error is a correctness defect even if the business assertion passes.
+
+### Result and evidence model — conceptual
+
+A case result should distinguish:
+
+- **Environment outcome:** preflight, provisioning, profile setup and usable readiness.
+- **Verification outcome:** which expected behavior was observed, assertion status and concrete probe origin.
+- **Evidence outcome:** captured, partial, failed, redacted and artifact locations.
+- **Cleanup outcome:** attempted, succeeded, partially succeeded, or failed, with resource inventory.
+- **Termination cause:** success, validation error, provisioning error, scenario failure, deadline, explicit cancellation, unexpected panic.
+
+No single aggregate `PASS` should hide secondary operational failures. Possible future structured artifact fields: run ID, profile/version matrix, cluster ID, scenario ID, timestamps, terminal reason, observed Kubernetes conditions, redacted request and response samples, backend invocation counters, event/log attachment pointers, and cleanup inventory.
+
+## 10. Delivery roadmap and proposed slices
+
+The **priority** of a profile is distinct from exact version numbering; do not equate P1 with semantic version 1.0 or P2 with version 2.0. **v2.0.0 is reserved as the earliest investigation boundary for existing-cluster support.**
+
+| Suggested slice | Visible product outcome | Acceptance / proof |
+| --- | --- | --- |
+| S0 — Foundation | Small Go module, local test runner and testability seams | Fast unit tests, Docker prereq detection, documented pinned toolchain |
+| S1 — Owned lifecycle | Create and dispose of a Kind cluster safely | Partial failures, cancellation, double cleanup, deadline and leak tests |
+| S2 — M01 vertical slice | Orders + PostgreSQL + migrations | One reproducible end-to-end test; negative migration scenario; diagnostics |
+| S3 — Gateway API | Envoy Gateway standard profile | G01/G02/G03, resource status and data-plane evidence |
+| S4 — Agentgateway | Kubernetes-native MCP profiles | A01/A02/A03 with deterministic tool servers and identities |
+| S5 — Istio | East-west networking profile | I01/I02/I03 with explicit traffic-origin checks |
+| S6 — Agent Router | Envoy AI routing profile | R01/R02/R03 with local mock providers and Redis |
+| Future v2.0.0 investigation | Existing staging cluster design | Ownership, RBAC, read-only/mutation policies, cleanup safety, data isolation and explicit opt-in |
+
+### S1 lifecycle acceptance examples
+
+- If Kind creates a container and a later kubeconfig/client initialization step fails, cleanup still attempts to delete the cluster.
+- If a profile installation times out, the original timeout and relevant last-seen controller conditions remain visible after cleanup.
+- If cleanup fails, the harness reports the primary failure and the cleanup failure distinctly.
+- Calling cleanup twice does not delete any external/unowned resource or create a new error through double disposal.
+- A cancellation during readiness does not leave an infinite watch or bypass cleanup.
+- No test relies on a guarantee that two independent free-port probes return different port numbers.
+
+### S2 (M01) acceptance examples
+
+- A new contributor can run the reference scenario locally with the documented prerequisites and **no cloud account**.
+- A successful test verifies real PostgreSQL persistence, not merely a mocked repository return value.
+- A failed migration blocks business assertions and yields actionable Job status/logs.
+- Test success, diagnostics status and teardown are recorded separately.
+- A baseline implementation is retained for effort/performance comparison.
+
+## 11. Design risks, trade-offs and mitigations
+
+| Risk | Why it matters | Mitigation / investigation |
+| --- | --- | --- |
+| Slow Kind + controller startup | Makes `go test` unattractive | Profile-scoped suites, cache pinned images, measure cold/warm; prefer correctness initially |
+| Docker/network/port races | Unreliable CI environments | Preflight, owned forwarding/mapping with cleanup, structured retry with deadlines |
+| CRD/controller version mismatch | Install succeeds partially or status differs | Compatibility matrix; pin tested chart and CRD versions; fail fast |
+| Control-plane success but data-plane failure | Misleading “ready” state | Verify both resource conditions and real network traffic |
+| Evidence collection blocks teardown | Leaks infra on failed tests | Separate bounded evidence and cleanup budgets |
+| Shared cluster/policy state | Cross-test interference | Cluster per suite or scenario; explicit isolation for cluster-scoped resources |
+| Agentgateway standalone vs Kubernetes config mismatch | Unsupported feature assumptions | Translate examples only using documented Kubernetes CRDs; verify every scenario |
+| Agent Router cloud-dependent examples | CI depends on secrets, costs, outages | Local deterministic OpenAI mocks for routing/fallback/quota experiments |
+| Service mesh modes differ | Misleading policy verification | Start with sidecar, originate probes in mesh, later consider ambient |
+| Overengineering extensibility | More framework code than saved work | Validate M01 and G02 first; start with static profiles rather than plugin SDK |
+| Too many assertions hidden in helpers | Difficult test diagnosis | Keep explicit error contexts and domain assertions in developer code |
+| Sensitive artifacts | Tokens, payloads, kubeconfig or secrets exposed | Redaction, opt-in capture and artifact retention strategy |
+| Changing upstream releases | Examples drift | Pin tested versions and track links/commit SHAs as implementation begins |
+
+## 12. Open questions for pstack planning
+
+These are deliberately **not** resolved by this concept. Prefer narrow decisions tied to the next executable slice.
+
+1. **Public Go lifecycle API:** Should `New(t)` register cleanup immediately, return a resource handle with explicit `Close`, or both? How are errors surfaced without hiding `testing.T` failures?
+2. **Execution ownership:** Is one cluster created per test, per package, or per suite? What is the default and what is opt-in?
+3. **Contexts:** How are run, setup, per-operation, evidence and cleanup deadlines separated? How do late watchers or tasks terminate?
+4. **Installation:** Use Kubernetes `client-go`, Helm SDK, external commands, or an intentionally small hybrid? What are the consequences for CI?
+5. **Manifests and resource inventory:** How does KubeHarness track ownership and rollback after partially successful apply?
+6. **Endpoint resolution:** Port forwarding, Kind port mappings, in-cluster probe, or combinations based on traffic origin? How are port races handled?
+7. **Readiness abstraction:** Which stock observations are necessary for S1/S2, and how are application-defined usability checks expressed?
+8. **Diagnostics:** What is mandatory vs optional on failure, and which formats/size limits/redaction rules apply?
+9. **Version compatibility:** Which tested Kubernetes/Kind/Envoy versions should be the first release matrix? What is the upgrade policy?
+10. **Profile representation:** Start with hardcoded typed Go implementations or declarative recipes? How to avoid a premature general plugin system?
+11. **Experiment oracle ownership:** What should the harness assert versus what should remain plain Go test code?
+12. **Fixture selection:** How much of Orders/PostgreSQL, HTTP mock LLM, and MCP test server belongs in example repository assets versus the shipped library?
+13. **Result publication:** Are Go test output and CI artifacts enough for v1, or is a structured machine-readable result necessary early?
+14. **v2 existing-cluster safety:** Do not design yet; record a future investigation of opt-in capability, restricted RBAC, ownership and protected cleanup.
+
+## 13. pstack planning protocol
+
+Use this document to supply **context and stable constraints**, not to instruct pstack to implement everything at once. Each slice should have a small artifact bundle and a clear review gate.
+
+### Suggested planning flow
+
+```mermaid
+flowchart TD
+    A["Read README + CONCEPT + current repo"] --> B["Choose one slice and one experiment"]
+    B --> C["Restate system boundary and non-goals"]
+    C --> D["Model lifecycle states and invariants"]
+    D --> E["Derive positive, negative, timeout and cleanup scenarios"]
+    E --> F["Compare minimum viable architectures and trade-offs"]
+    F --> G["Define acceptance evidence and measurements"]
+    G --> H["Create implementation plan with small checkpoints"]
+    H --> I["Interrogate assumptions and review failure paths"]
+    I --> J["Implement, test, measure, and update concept/decisions"]
+```
+
+### Required planning artifacts per slice
+
+1. **Boundary:** user value, actors, observable outputs, dependencies, explicitly excluded work.
+2. **Behavioral model:** resource states, events, transitions, failure paths, invariants and ownership.
+3. **Contract:** proposed Go API surface *only for the selected slice*; error and cancellation semantics.
+4. **Scenarios:** happy path, known failures, retries, cancellation, diagnostics and double/partial cleanup.
+5. **Architecture trade-offs:** at least two plausible implementation approaches where there is a real choice, with consequences and risks.
+6. **Verification plan:** reproducible test fixtures, baseline, negative controls, metrics and acceptance criteria.
+7. **Delivery steps:** small PR-sized tasks with dependencies and explicit completion checks.
+8. **Decision log:** accepted decisions, discarded alternatives, unresolved questions and docs to update.
+
+### How to use multi-agent review
+
+Use multiple agents for **independent perspectives**, not duplicate implementation. Useful responsibilities: an architect for boundaries and design alternatives, a failure-mode investigator for lifecycle/cancellation/isolation, a test designer for experiment oracles and negative controls, and an independent reviewer to challenge assumptions. Assign implementation only after these reviews reconcile on contracts and slice scope. For pstack's configured model/role allocation, let the tool's actual setup determine routing; this document does not prescribe specific model IDs.
+
+### Starter pstack request
+
+> Read README.md and CONCEPT.md in ogarciacar/kubeharness. Plan **only S1: Owned cluster lifecycle**. Do not implement gateways or existing-cluster support. Produce the system boundary, a behavior state machine, invariants, an explicit public Go API proposal with alternatives, failure and teardown matrix, isolation/cancellation strategy, and an incremental implementation plan with executable acceptance tests. Challenge the plan for leaked clusters, port races, premature extensibility and errors masked by cleanup. Treat README/CONCEPT as concept, not as proof of existing implementation.
+
+For S2, replace the scope with **M01: Orders + PostgreSQL + migrations** and require a baseline comparison using plain Kind/Go tests.
+
+## 14. Sources and inspiration
+
+The following links are **upstream inspirations**, not code copied into KubeHarness. Verify current APIs, licenses and supported versions when turning any example into source code; freeze a specific upstream revision in the relevant implementation PR.
+
+### Foundations
+
+- [Kind](https://kind.sigs.k8s.io/)
+- [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/)
+- [Envoy Gateway traffic management](https://gateway.envoyproxy.io/latest/tasks/traffic/)
+- [Envoy Gateway HTTPRoute traffic splitting](https://gateway.envoyproxy.io/latest/tasks/traffic/http-traffic-splitting/)
+- [Istio authorization](https://istio.io/latest/docs/tasks/security/authorization/authz-http/)
+- [Istio mTLS security](https://istio.io/latest/docs/concepts/security/)
+
+### Agentgateway
+
+- [Project repository](https://github.com/agentgateway/agentgateway)
+- [Kubernetes controller and Gateway API concepts](https://agentgateway.dev/docs/kubernetes/latest/documentation/about/overview/)
+- [Kubernetes quickstart](https://agentgateway.dev/docs/kubernetes/latest/documentation/quickstart/install/)
+- [MCP authorization example](https://github.com/agentgateway/agentgateway/blob/main/examples/mcp-authorization/README.md)
+- [MCP multiplex example](https://github.com/agentgateway/agentgateway/blob/main/examples/mcp-multiplex/README.md)
+- [OpenAPI-to-MCP example](https://github.com/agentgateway/agentgateway/blob/main/examples/mcp-openapi/README.md)
+- [Per-key rate limiting example](https://github.com/agentgateway/agentgateway/blob/main/examples/llm-keyed-rate-limit/README.md)
+- [Fault injection example](https://github.com/agentgateway/agentgateway/blob/main/examples/fault-injection/README.md)
+
+### Agent Router (formerly Envoy AI Gateway)
+
+- [Project repository](https://github.com/theagentrouter/agent-router)
+- [Getting started](https://theagentrouter.ai/docs/getting-started/)
+- [Kubernetes prerequisites](https://theagentrouter.ai/docs/getting-started/prerequisites/)
+- [Examples index](https://github.com/theagentrouter/agent-router/blob/main/examples/README.md)
+- [Basic Gateway API and AI route manifests](https://github.com/theagentrouter/agent-router/blob/main/examples/basic/basic.yaml)
+- [Provider fallback example](https://github.com/theagentrouter/agent-router/tree/main/examples/provider_fallback)
+- [Provider fallback E2E test](https://github.com/theagentrouter/agent-router/blob/main/tests/e2e/provider_fallback_test.go)
+- [Token rate limit example](https://github.com/theagentrouter/agent-router/tree/main/examples/token_ratelimit)
+- [Token rate limit E2E test](https://github.com/theagentrouter/agent-router/blob/main/tests/e2e/token_ratelimit_test.go)
+- [MCP authorization E2E tests](https://github.com/theagentrouter/agent-router/blob/main/tests/e2e/mcp_route_authorization_test.go)
+- [Inference pool example](https://github.com/theagentrouter/agent-router/tree/main/examples/inference-pool)
+
+---
+
+**Concept completion criterion:** A planning agent can select one slice, state what is inside and outside its boundary, trace the relevant state transitions and invariants, design a discriminating experiment with negative controls, and produce a defensible implementation plan **without assuming any of the proposed framework APIs or platform profiles already exist**.
