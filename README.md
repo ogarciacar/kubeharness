@@ -4,7 +4,46 @@
 
 KubeHarness is a **proposed Go-native platform integration testing harness** for reproducible, isolated Kubernetes environments. It aims to let developers express application and platform expectations while the harness provisions the cluster, deploys dependencies and workloads, waits for usable readiness, executes verifications, gathers failure evidence, and cleans up.
 
-> **Status: concept / pre-implementation.** This repository is a clean start, not a rename or fork of [kubecheck](https://github.com/ogarciacar/kubecheck). The APIs, profiles, and experiments below are design proposals, **not implemented features**. See [CONCEPT.md](CONCEPT.md) for decisions, trade-offs, candidate experiments, and planning inputs.
+> **Status: S1 (owned cluster lifecycle) implemented; everything else is concept.** This repository is a clean start, not a rename or fork of [kubecheck](https://github.com/ogarciacar/kubecheck). Only `kubeharness.New(t)` exists today. The profiles, workload helpers, and experiments below are design proposals, **not implemented features**. See [CONCEPT.md](CONCEPT.md) for decisions, trade-offs, candidate experiments, and planning inputs.
+
+## Quick start (implemented today)
+
+Requires Go 1.27 and a running Docker daemon. No `kind` binary or cloud account is needed.
+
+```go
+package orders_test
+
+import (
+    "testing"
+
+    "github.com/ogarciacar/kubeharness"
+    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    "k8s.io/client-go/kubernetes"
+)
+
+func TestCluster(t *testing.T) {
+    h := kubeharness.New(t) // owned Kind cluster, deleted via t.Cleanup
+    client := kubernetes.NewForConfigOrDie(h.RESTConfig())
+    nodes, err := client.CoreV1().Nodes().List(t.Context(), metav1.ListOptions{})
+    if err != nil {
+        t.Fatal(err)
+    }
+    t.Logf("%d nodes", len(nodes.Items))
+}
+```
+
+Each run logs one report line with setup, test, and cleanup outcomes as separate fields. `go test` shows it with `-v` or when the test fails:
+
+```text
+kubeharness cluster=kh-443ca88f073e-10066 phase=ready cause=ok cleanup=succeeded remaining=0 create=7.9s ready=16.8s delete=460ms
+```
+
+A cleanup that fails or can't be confirmed fails the test and prints a `docker rm` command that removes it. Before setup starts, the cluster name and that command also go to stderr. If you stop `go test` with Ctrl-C, cleanup does not run, and `go test ./...` throws away the test binary's output. Run `hack/leaks.sh` afterwards to list what was left behind.
+
+- `go test ./...` runs the lifecycle fault matrix against a fake provider. No Docker needed.
+- `go test -tags e2e ./...` runs against real Kind (kind v0.33.0, Kubernetes v1.37.0).
+- `hack/leaks.sh` reports leftover `kh-*` clusters. It never deletes.
+- `hack/screen.sh [runs]` repeats the e2e suite and tallies pass, fail, and leaks.
 
 ## The problem
 
