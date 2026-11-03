@@ -4,7 +4,7 @@
 
 KubeHarness is a **proposed Go-native platform integration testing harness** for reproducible, isolated Kubernetes environments. It aims to let developers express application and platform expectations while the harness provisions the cluster, deploys dependencies and workloads, waits for usable readiness, executes verifications, gathers failure evidence, and cleans up.
 
-> **Status: S1 (owned cluster lifecycle) implemented; everything else is concept.** This repository is a clean start, not a rename or fork of [kubecheck](https://github.com/ogarciacar/kubecheck). Only `kubeharness.New(t)` exists today. The profiles, workload helpers, and experiments below are design proposals, **not implemented features**. See [CONCEPT.md](CONCEPT.md) for decisions, trade-offs, candidate experiments, and planning inputs.
+> **Status: S1 (owned cluster lifecycle) and the S2 workload methods are implemented; everything else is concept.** This repository is a clean start, not a rename or fork of [kubecheck](https://github.com/ogarciacar/kubecheck). `kubeharness.New(t)` and the five workload methods below exist today. The profiles and experiments below are design proposals, **not implemented features**. See [CONCEPT.md](CONCEPT.md) for decisions, trade-offs, candidate experiments, and planning inputs.
 
 ## Quick start (implemented today)
 
@@ -37,6 +37,33 @@ Each run logs one report line with setup, test, and cleanup outcomes as separate
 ```text
 kubeharness cluster=kh-443ca88f073e-10066 phase=ready cause=ok cleanup=succeeded remaining=0 create=7.9s ready=16.8s delete=460ms
 ```
+
+### Run workloads
+
+`Harness` has five methods for putting workloads on the cluster. Each one fails the test with evidence when it can't finish: the last state it observed, plus the Pods' container states and log tails.
+
+| Method | What it does |
+| --- | --- |
+| `h.Apply(dir)` | Server-side applies every `.yaml` and `.yml` file in `dir`, in file-name order. Objects without a namespace go to `default`. |
+| `h.WaitReady(name)` | Waits until Deployment `name` is rolled out and every replica is available. |
+| `h.RunJob(dir)` | Applies `dir`, which must hold exactly one Job, and waits for that Job to complete. |
+| `h.Forward(service, port)` | Forwards a local port to a Service port and returns the local address, such as `127.0.0.1:53017`. Use it as a TCP address or prefix `http://`. |
+| `h.LoadImage(ref)` | Copies an image you built into the cluster, for manifests that use `imagePullPolicy: Never`. |
+
+Call these methods from the test that created `h`. They fail that test, and a forward stops when that test ends.
+
+```go
+h.Apply("testdata/postgres")
+h.WaitReady("postgres")
+h.RunJob("testdata/migrate")
+db, err := sql.Open("pgx", "postgres://app:secret@"+h.Forward("postgres", 5432)+"/orders")
+```
+
+The `sql.Open` line needs a driver, for example `import _ "github.com/jackc/pgx/v5/stdlib"`.
+
+`WaitReady` is only as strict as the Deployment's `readinessProbe`. Give PostgreSQL one, such as `exec: {command: [pg_isready, -h, 127.0.0.1]}`. Without it the Deployment counts as available before PostgreSQL accepts connections, and a migration Job started right after can fail.
+
+Set `backoffLimit: 0` and `restartPolicy: Never` on a migration Job. With Kubernetes' default of 6 retries, a failing Job keeps restarting until `RunJob` runs out of time, and you see "did not complete" instead of "failed". With `restartPolicy: OnFailure` the Job controller deletes the failed Pod, and its exit code and logs go with it. Don't set `ttlSecondsAfterFinished: 0` either: the Job is deleted before `RunJob` can see it finish, so `RunJob` fails even when the Job succeeded.
 
 A cleanup that fails or can't be confirmed fails the test and prints a `docker rm` command that removes it. Before setup starts, the cluster name and that command also go to stderr. If you stop `go test` with Ctrl-C, cleanup does not run, and `go test ./...` throws away the test binary's output. Run `hack/leaks.sh` afterwards to list what was left behind.
 
