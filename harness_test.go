@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ogarciacar/kubeharness/internal/kindcluster"
 	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 	"github.com/ogarciacar/kubeharness/internal/lifecycle/lifecycletest"
 	"os"
@@ -87,7 +88,7 @@ func TestCleanupFailureIsItsOwnTestErrorWithRemedy(t *testing.T) {
 	if len(tb.fatals) != 0 {
 		t.Fatalf("setup should have passed: %q", tb.fatals)
 	}
-	want := remedy(h.ClusterName())
+	want := kindcluster.Remedy(h.ClusterName())
 	if len(tb.errs) != 1 || !strings.Contains(tb.errs[0], want) {
 		t.Fatalf("errs = %q, want remedy %q", tb.errs, want)
 	}
@@ -164,7 +165,7 @@ func TestClusterNameReachesStderrBeforeCreate(t *testing.T) {
 	tb := &fakeTB{dir: t.TempDir()}
 	var name string
 	tb.run(func() { name = newHarness(tb, p, readyOK, fastTimeouts).ClusterName() })
-	if !strings.Contains(p.seen, remedy(name)) {
+	if !strings.Contains(p.seen, kindcluster.Remedy(name)) {
 		t.Fatalf("cluster name and remedy not on stderr when Create started: %q", p.seen)
 	}
 }
@@ -210,7 +211,7 @@ func TestFailedEarlyDisposalSaysSoAndGivesTheRemedy(t *testing.T) {
 		name = newHarness(tb, f, readyOK, to).ClusterName()
 		time.Sleep(time.Until(deadline))
 	})
-	if strings.Contains(out.String(), "disposed cluster") || !strings.Contains(out.String(), "cleanup failed for cluster "+name) || !strings.Contains(out.String(), remedy(name)) {
+	if strings.Contains(out.String(), "disposed cluster") || !strings.Contains(out.String(), "cleanup failed for cluster "+name) || !strings.Contains(out.String(), kindcluster.Remedy(name)) {
 		t.Fatalf("failed early disposal reported as done: %q", out.String())
 	}
 }
@@ -223,14 +224,6 @@ func TestRESTConfigReturnsACopy(t *testing.T) {
 	a.Host = "https://changed.invalid"
 	if h.RESTConfig().Host == a.Host {
 		t.Fatal("RESTConfig shares state between callers")
-	}
-}
-
-func TestRemedyRemovesExactlyTheClusterNodesAndTheirVolumes(t *testing.T) {
-	ps := "docker ps -aq --filter label=io.x-k8s.kind.cluster=kh-abc-1"
-	want := ps + " >/dev/null && for c in $(" + ps + "); do docker rm -f -v \"$c\"; done"
-	if got := remedy("kh-abc-1"); got != want {
-		t.Fatalf("remedy = %q, want %q", got, want)
 	}
 }
 

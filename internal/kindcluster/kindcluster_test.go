@@ -1,4 +1,4 @@
-package kubeharness
+package kindcluster
 
 import (
 	"errors"
@@ -30,5 +30,13 @@ func TestKindErrorsKeepDockersReason(t *testing.T) {
 	}
 	if kindErr(nil) != nil {
 		t.Fatal("nil error wrapped")
+	}
+}
+
+func TestRemedyRemovesExactlyTheClusterNodesAndTheirVolumes(t *testing.T) {
+	ps := "docker ps -aq --filter label=io.x-k8s.kind.cluster=kh-abc-1"
+	want := ps + " >/dev/null && for c in $(" + ps + "); do docker rm -f -v \"$c\"; done"
+	if got := Remedy("kh-abc-1"); got != want {
+		t.Fatalf("remedy = %q, want %q", got, want)
 	}
 }

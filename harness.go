@@ -13,6 +13,7 @@ package kubeharness
 import (
 	"context"
 	"fmt"
+	"github.com/ogarciacar/kubeharness/internal/kindcluster"
 	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 	"io"
 	"os"
@@ -38,7 +39,7 @@ type Harness struct {
 // cleanup failure is reported as its own test error.
 func New(t testing.TB) *Harness {
 	t.Helper()
-	return newHarness(t, newKindProvider(), waitUsable, lifecycle.DefaultTimeouts)
+	return newHarness(t, kindcluster.New(), waitUsable, lifecycle.DefaultTimeouts)
 }
 
 func newHarness(t testing.TB, p lifecycle.Provider, ready lifecycle.ReadyFunc, to lifecycle.Timeouts) *Harness {
@@ -54,7 +55,7 @@ func newHarness(t testing.TB, p lifecycle.Provider, ready lifecycle.ReadyFunc, t
 		t.Log(r.String())
 		if r.Cleanup == lifecycle.CleanupFailed || r.Cleanup == lifecycle.CleanupUncertain {
 			t.Errorf("kubeharness: cleanup %s for cluster %s: %v; remove it with: %s",
-				r.Cleanup, r.Cluster, r.CleanupErr, remedy(r.Cluster))
+				r.Cleanup, r.Cluster, r.CleanupErr, kindcluster.Remedy(r.Cluster))
 		}
 	})
 
@@ -68,7 +69,7 @@ func newHarness(t testing.TB, p lifecycle.Provider, ready lifecycle.ReadyFunc, t
 		t.Fatalf("kubeharness: %v", err)
 	}
 	// testing buffers t.Log until the test ends, so a killed run would never show it.
-	fmt.Fprintf(stderr, "kubeharness: creating cluster %s; if this run is killed, remove it with: %s\n", e.Name(), remedy(e.Name()))
+	fmt.Fprintf(stderr, "kubeharness: creating cluster %s; if this run is killed, remove it with: %s\n", e.Name(), kindcluster.Remedy(e.Name()))
 	if hasDeadline {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithDeadline(ctx, disposeBy)
@@ -84,7 +85,7 @@ func newHarness(t testing.TB, p lifecycle.Provider, ready lifecycle.ReadyFunc, t
 			r := e.Close(lifecycle.CauseDeadline)
 			outcome := fmt.Sprintf("disposed cluster %s early so cleanup could finish", r.Cluster)
 			if r.Cleanup != lifecycle.CleanupSucceeded {
-				outcome = fmt.Sprintf("cleanup %s for cluster %s; remove it with: %s", r.Cleanup, r.Cluster, remedy(r.Cluster))
+				outcome = fmt.Sprintf("cleanup %s for cluster %s; remove it with: %s", r.Cleanup, r.Cluster, kindcluster.Remedy(r.Cluster))
 			}
 			fmt.Fprintf(stderr, "kubeharness: test still running near -timeout; %s: %s\n", outcome, r)
 			t.Errorf("kubeharness: test still running %s before -timeout; %s", time.Until(deadline).Round(time.Second), outcome)
@@ -100,13 +101,6 @@ func newHarness(t testing.TB, p lifecycle.Provider, ready lifecycle.ReadyFunc, t
 		t.Fatalf("kubeharness: load kubeconfig for cluster %s: %v", e.Name(), err)
 	}
 	return &Harness{name: e.Name(), kubeconfig: kubeconfig, rest: cfg}
-}
-
-// remedy removes a cluster's node containers with Docker alone, because the
-// kind CLI is not a prerequisite.
-func remedy(name string) string {
-	ps := "docker ps -aq --filter label=io.x-k8s.kind.cluster=" + name
-	return fmt.Sprintf(`%s >/dev/null && for c in $(%s); do docker rm -f -v "$c"; done`, ps, ps)
 }
 
 // testDeadline reads -timeout from *testing.T; testing.TB does not expose it.

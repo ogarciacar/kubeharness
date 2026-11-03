@@ -4,6 +4,7 @@ package kubeharness
 
 import (
 	"context"
+	"github.com/ogarciacar/kubeharness/internal/kindcluster"
 	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 	"os"
 	"os/exec"
@@ -26,7 +27,7 @@ func TestHungCreateOnRealKindIsBoundedAndNotReportedClean(t *testing.T) {
 	}
 	to := lifecycle.DefaultTimeouts
 	to.Create = 20 * time.Second
-	e := lifecycle.NewEnv(newKindProvider(), waitUsable, filepath.Join(t.TempDir(), "kubeconfig"), to)
+	e := lifecycle.NewEnv(kindcluster.New(), waitUsable, filepath.Join(t.TempDir(), "kubeconfig"), to)
 	t.Cleanup(func() { e.Close(lifecycle.CauseOK) })
 	node := e.Name() + "-control-plane"
 
@@ -77,7 +78,7 @@ func TestHungCreateOnRealKindIsBoundedAndNotReportedClean(t *testing.T) {
 }
 
 func TestNameCollisionOnRealKindLeavesTheOtherClusterAlone(t *testing.T) {
-	kp := newKindProvider()
+	kp := kindcluster.New()
 	e := lifecycle.NewEnv(kp, waitUsable, filepath.Join(t.TempDir(), "kubeconfig"), lifecycle.DefaultTimeouts)
 	other := e.Name()
 	otherKubeconfig := filepath.Join(t.TempDir(), "other-kubeconfig")
@@ -112,14 +113,14 @@ current-context: kind-kh-none-1
 		t.Fatal(err)
 	}
 	t.Setenv("KUBECONFIG", dev)
-	_ = newKindProvider().Delete("kh-none-1", filepath.Join(t.TempDir(), "own-kubeconfig"))
+	_ = kindcluster.New().Delete("kh-none-1", filepath.Join(t.TempDir(), "own-kubeconfig"))
 	if after, _ := os.ReadFile(dev); string(after) != contents {
 		t.Fatalf("Delete rewrote the developer kubeconfig:\n%s", after)
 	}
 }
 
 func TestPrintedRemedyRemovesARealCluster(t *testing.T) {
-	kp := newKindProvider()
+	kp := kindcluster.New()
 	name := lifecycle.NewClusterName()
 	kubeconfig := filepath.Join(t.TempDir(), "kubeconfig")
 	t.Cleanup(func() { _ = kp.Delete(string(name), kubeconfig) })
@@ -131,15 +132,15 @@ func TestPrintedRemedyRemovesARealCluster(t *testing.T) {
 	if err != nil || len(strings.Fields(string(vols))) == 0 {
 		t.Fatalf("inspect node volumes: %v %q", err, vols)
 	}
-	if out, err := exec.Command("sh", "-c", remedy(string(name))).CombinedOutput(); err != nil {
-		t.Fatalf("remedy failed: %v\n%s", err, out)
+	if out, err := exec.Command("sh", "-c", kindcluster.Remedy(string(name))).CombinedOutput(); err != nil {
+		t.Fatalf("kindcluster.Remedy failed: %v\n%s", err, out)
 	}
 	if out, _ := exec.Command("docker", "ps", "-aq", "--filter", "label=io.x-k8s.kind.cluster="+string(name)).Output(); len(strings.TrimSpace(string(out))) > 0 {
-		t.Fatalf("remedy left node containers: %s", out)
+		t.Fatalf("kindcluster.Remedy left node containers: %s", out)
 	}
 	for _, v := range strings.Fields(string(vols)) {
 		if err := exec.Command("docker", "volume", "inspect", v).Run(); err == nil {
-			t.Errorf("remedy left volume %s", v)
+			t.Errorf("kindcluster.Remedy left volume %s", v)
 		}
 	}
 }
@@ -149,16 +150,16 @@ func TestPrintedRemedySucceedsWhenNothingIsLeft(t *testing.T) {
 		if _, err := exec.LookPath(shell); err != nil {
 			continue
 		}
-		if out, err := exec.Command(shell, "-c", remedy("kh-none-1")).CombinedOutput(); err != nil {
-			t.Errorf("%s: remedy for a cluster that is already gone failed: %v\n%s", shell, err, out)
+		if out, err := exec.Command(shell, "-c", kindcluster.Remedy("kh-none-1")).CombinedOutput(); err != nil {
+			t.Errorf("%s: kindcluster.Remedy for a cluster that is already gone failed: %v\n%s", shell, err, out)
 		}
 	}
 }
 
 func TestPrintedRemedyFailsWhenDockerDoesNotAnswer(t *testing.T) {
-	cmd := exec.Command("sh", "-c", remedy("kh-none-1"))
+	cmd := exec.Command("sh", "-c", kindcluster.Remedy("kh-none-1"))
 	cmd.Env = append(os.Environ(), "DOCKER_HOST=unix:///nonexistent/docker.sock")
 	if out, err := cmd.CombinedOutput(); err == nil {
-		t.Fatalf("remedy exited 0 although Docker could not be reached:\n%s", out)
+		t.Fatalf("kindcluster.Remedy exited 0 although Docker could not be reached:\n%s", out)
 	}
 }
