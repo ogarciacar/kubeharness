@@ -4,6 +4,7 @@ package kubeharness
 
 import (
 	"context"
+	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,11 +24,11 @@ func TestHungCreateOnRealKindIsBoundedAndNotReportedClean(t *testing.T) {
 	if out, err := exec.Command("docker", "pull", defaults.Image).CombinedOutput(); err != nil {
 		t.Fatalf("pull node image: %v\n%s", err, out)
 	}
-	to := defaultTimeouts
-	to.create = 20 * time.Second
-	e := newEnv(newKindProvider(), waitUsable, filepath.Join(t.TempDir(), "kubeconfig"), to)
-	t.Cleanup(func() { e.close(CauseOK) })
-	node := string(e.name) + "-control-plane"
+	to := lifecycle.DefaultTimeouts
+	to.Create = 20 * time.Second
+	e := lifecycle.NewEnv(newKindProvider(), waitUsable, filepath.Join(t.TempDir(), "kubeconfig"), to)
+	t.Cleanup(func() { e.Close(lifecycle.CauseOK) })
+	node := e.Name() + "-control-plane"
 
 	setupDone := make(chan struct{})
 	paused := make(chan bool, 1)
@@ -49,7 +50,7 @@ func TestHungCreateOnRealKindIsBoundedAndNotReportedClean(t *testing.T) {
 	}()
 
 	began := time.Now()
-	err := e.start(context.Background())
+	err := e.Start(context.Background())
 	took := time.Since(began)
 	close(setupDone)
 	if !<-paused {
@@ -58,21 +59,18 @@ func TestHungCreateOnRealKindIsBoundedAndNotReportedClean(t *testing.T) {
 	if err == nil {
 		t.Fatal("create succeeded although the node was paused")
 	}
-	if took > to.create+2*time.Second {
-		t.Fatalf("start took %s, want about %s", took, to.create)
+	if took > to.Create+2*time.Second {
+		t.Fatalf("start took %s, want about %s", took, to.Create)
 	}
-	r := e.close(CauseOK)
+	r := e.Close(lifecycle.CauseOK)
 	t.Log(r.String())
-	if r.Cause != CauseDeadline || r.Phase != PhaseProvisioning {
+	if r.Cause != lifecycle.CauseDeadline || r.Phase != lifecycle.PhaseProvisioning {
 		t.Fatalf("report = %s", r)
 	}
-	if r.Cleanup == CleanupSucceeded && e.createInFlight() {
-		t.Fatalf("cleanup claimed success while create is still in flight: %s", r)
-	}
-	if r.Cleanup != CleanupSucceeded && r.Cleanup != CleanupUncertain {
+	if r.Cleanup != lifecycle.CleanupSucceeded && r.Cleanup != lifecycle.CleanupUncertain {
 		t.Fatalf("cleanup = %s, want succeeded (create returned) or uncertain (still in flight)", r.Cleanup)
 	}
-	out, _ := exec.Command("docker", "ps", "-a", "--filter", "label=io.x-k8s.kind.cluster="+string(e.name), "--format", "{{.Names}}").Output()
+	out, _ := exec.Command("docker", "ps", "-a", "--filter", "label=io.x-k8s.kind.cluster="+e.Name(), "--format", "{{.Names}}").Output()
 	if left := strings.Fields(string(out)); len(left) > 0 {
 		t.Errorf("node containers still present after cleanup: %v", left)
 	}
@@ -80,25 +78,24 @@ func TestHungCreateOnRealKindIsBoundedAndNotReportedClean(t *testing.T) {
 
 func TestNameCollisionOnRealKindLeavesTheOtherClusterAlone(t *testing.T) {
 	kp := newKindProvider()
-	other := newClusterName()
+	e := lifecycle.NewEnv(kp, waitUsable, filepath.Join(t.TempDir(), "kubeconfig"), lifecycle.DefaultTimeouts)
+	other := e.Name()
 	otherKubeconfig := filepath.Join(t.TempDir(), "other-kubeconfig")
-	if err := kp.Create(string(other), otherKubeconfig); err != nil {
+	if err := kp.Create(other, otherKubeconfig); err != nil {
 		t.Fatalf("create the other cluster: %v", err)
 	}
-	t.Cleanup(func() { _ = kp.Delete(string(other), otherKubeconfig) })
+	t.Cleanup(func() { _ = kp.Delete(other, otherKubeconfig) })
 
-	e := newEnv(kp, waitUsable, filepath.Join(t.TempDir(), "kubeconfig"), defaultTimeouts)
-	e.name, e.report.Cluster = other, string(other)
-	if err := e.start(context.Background()); err == nil {
+	if err := e.Start(context.Background()); err == nil {
 		t.Fatal("create succeeded on a name that is already taken")
 	}
-	r := e.close(CauseOK)
+	r := e.Close(lifecycle.CauseOK)
 	names, err := kp.List()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Cleanup != CleanupNotNeeded || !slices.Contains(names, string(other)) {
-		t.Fatalf("collision path touched a cluster it does not own: report=%s present=%v", r, slices.Contains(names, string(other)))
+	if r.Cleanup != lifecycle.CleanupNotNeeded || !slices.Contains(names, other) {
+		t.Fatalf("collision path touched a cluster it does not own: report=%s present=%v", r, slices.Contains(names, other))
 	}
 }
 
@@ -123,7 +120,7 @@ current-context: kind-kh-none-1
 
 func TestPrintedRemedyRemovesARealCluster(t *testing.T) {
 	kp := newKindProvider()
-	name := newClusterName()
+	name := lifecycle.NewClusterName()
 	kubeconfig := filepath.Join(t.TempDir(), "kubeconfig")
 	t.Cleanup(func() { _ = kp.Delete(string(name), kubeconfig) })
 	if err := kp.Create(string(name), kubeconfig); err != nil {

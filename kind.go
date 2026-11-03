@@ -3,6 +3,7 @@ package kubeharness
 import (
 	"bytes"
 	"fmt"
+	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 	"strings"
 
 	"sigs.k8s.io/kind/pkg/apis/config/v1alpha4"
@@ -34,7 +35,7 @@ func (k kindProvider) Create(name, kubeconfigPath string) error {
 
 func kindCreateErr(err error) error {
 	if err != nil && strings.Contains(err.Error(), "already exist for a cluster with the name") {
-		return fmt.Errorf("%w: %v", errNameTaken, err)
+		return fmt.Errorf("%w: %v", lifecycle.ErrNameTaken, err)
 	}
 	return err
 }

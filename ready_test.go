@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ogarciacar/kubeharness/internal/lifecycle/lifecycletest"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -92,7 +93,7 @@ func TestWaitUsableStopsAtItsDeadlineWhenTheAPIServerNeverAnswers(t *testing.T) 
 		}
 	}()
 	kubeconfig := filepath.Join(t.TempDir(), "kubeconfig")
-	cfg := strings.ReplaceAll(fakeKubeconfig, "https://127.0.0.1:1", "http://"+ln.Addr().String())
+	cfg := strings.ReplaceAll(lifecycletest.FakeKubeconfig, "https://127.0.0.1:1", "http://"+ln.Addr().String())
 	if err := os.WriteFile(kubeconfig, []byte(cfg), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +124,7 @@ func TestEveryReadinessCallHonoursTheDeadline(t *testing.T) {
 			}))
 			defer srv.Close()
 			kubeconfig := filepath.Join(t.TempDir(), "kubeconfig")
-			cfg := strings.ReplaceAll(fakeKubeconfig, "https://127.0.0.1:1", srv.URL)
+			cfg := strings.ReplaceAll(lifecycletest.FakeKubeconfig, "https://127.0.0.1:1", srv.URL)
 			if err := os.WriteFile(kubeconfig, []byte(cfg), 0o600); err != nil {
 				t.Fatal(err)
 			}
