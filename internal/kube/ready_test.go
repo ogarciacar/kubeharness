@@ -1,4 +1,4 @@
-package kubeharness
+package kube
 
 import (
 	"context"
@@ -100,9 +100,9 @@ func TestWaitUsableStopsAtItsDeadlineWhenTheAPIServerNeverAnswers(t *testing.T) 
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	defer cancel()
 	began := time.Now()
-	err = waitUsable(ctx, kubeconfig)
+	err = WaitUsable(ctx, kubeconfig)
 	if took := time.Since(began); err == nil || took > time.Second {
-		t.Fatalf("waitUsable took %s past a 300ms deadline: %v", took, err)
+		t.Fatalf("WaitUsable took %s past a 300ms deadline: %v", took, err)
 	}
 }
 
@@ -131,9 +131,9 @@ func TestEveryReadinessCallHonoursTheDeadline(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 			defer cancel()
 			began := time.Now()
-			err := waitUsable(ctx, kubeconfig)
+			err := WaitUsable(ctx, kubeconfig)
 			if took := time.Since(began); err == nil || took > time.Second {
-				t.Fatalf("waitUsable took %s past a 300ms deadline while %s hung: %v", took, hang, err)
+				t.Fatalf("WaitUsable took %s past a 300ms deadline while %s hung: %v", took, hang, err)
 			}
 		})
 	}

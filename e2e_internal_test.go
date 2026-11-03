@@ -5,6 +5,7 @@ package kubeharness
 import (
 	"context"
 	"github.com/ogarciacar/kubeharness/internal/kindcluster"
+	"github.com/ogarciacar/kubeharness/internal/kube"
 	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 	"os"
 	"os/exec"
@@ -27,7 +28,7 @@ func TestHungCreateOnRealKindIsBoundedAndNotReportedClean(t *testing.T) {
 	}
 	to := lifecycle.DefaultTimeouts
 	to.Create = 20 * time.Second
-	e := lifecycle.NewEnv(kindcluster.New(), waitUsable, filepath.Join(t.TempDir(), "kubeconfig"), to)
+	e := lifecycle.NewEnv(kindcluster.New(), kube.WaitUsable, filepath.Join(t.TempDir(), "kubeconfig"), to)
 	t.Cleanup(func() { e.Close(lifecycle.CauseOK) })
 	node := e.Name() + "-control-plane"
 
@@ -79,7 +80,7 @@ func TestHungCreateOnRealKindIsBoundedAndNotReportedClean(t *testing.T) {
 
 func TestNameCollisionOnRealKindLeavesTheOtherClusterAlone(t *testing.T) {
 	kp := kindcluster.New()
-	e := lifecycle.NewEnv(kp, waitUsable, filepath.Join(t.TempDir(), "kubeconfig"), lifecycle.DefaultTimeouts)
+	e := lifecycle.NewEnv(kp, kube.WaitUsable, filepath.Join(t.TempDir(), "kubeconfig"), lifecycle.DefaultTimeouts)
 	other := e.Name()
 	otherKubeconfig := filepath.Join(t.TempDir(), "other-kubeconfig")
 	if err := kp.Create(other, otherKubeconfig); err != nil {

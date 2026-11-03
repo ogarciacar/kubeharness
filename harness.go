@@ -14,6 +14,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/ogarciacar/kubeharness/internal/kindcluster"
+	"github.com/ogarciacar/kubeharness/internal/kube"
 	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 	"io"
 	"os"
@@ -39,7 +40,7 @@ type Harness struct {
 // cleanup failure is reported as its own test error.
 func New(t testing.TB) *Harness {
 	t.Helper()
-	return newHarness(t, kindcluster.New(), waitUsable, lifecycle.DefaultTimeouts)
+	return newHarness(t, kindcluster.New(), kube.WaitUsable, lifecycle.DefaultTimeouts)
 }
 
 func newHarness(t testing.TB, p lifecycle.Provider, ready lifecycle.ReadyFunc, to lifecycle.Timeouts) *Harness {
