@@ -1,4 +1,4 @@
-package kubeharness
+package lifecycle
 
 import (
 	"fmt"

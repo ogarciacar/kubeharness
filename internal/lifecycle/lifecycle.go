@@ -1,4 +1,4 @@
-package kubeharness
+package lifecycle
 
 import (
 	"context"
@@ -9,44 +9,44 @@ import (
 	"time"
 )
 
-// provider is the cluster backend. Implementations may block without honoring
-// cancellation (kind's Create can hang indefinitely), so env never calls them
+// Provider is the cluster backend. Implementations may block without honoring
+// cancellation (kind's Create can hang indefinitely), so Env never calls them
 // without a bound.
-type provider interface {
+type Provider interface {
 	Create(name, kubeconfigPath string) error
 	Delete(name, kubeconfigPath string) error
 	List() ([]string, error)
 }
 
-var errNameTaken = errors.New("cluster name already exists")
+var ErrNameTaken = errors.New("cluster name already exists")
 
-type readyFunc func(ctx context.Context, kubeconfigPath string) error
+type ReadyFunc func(ctx context.Context, kubeconfigPath string) error
 
-type timeouts struct {
-	preflight     time.Duration
-	create        time.Duration
-	ready         time.Duration
-	cleanup       time.Duration
-	retryInterval time.Duration
+type Timeouts struct {
+	Preflight     time.Duration
+	Create        time.Duration
+	Ready         time.Duration
+	Cleanup       time.Duration
+	RetryInterval time.Duration
 	// deadlineMargin is kept free before go test's -timeout panic, after cleanup.
-	deadlineMargin time.Duration
+	DeadlineMargin time.Duration
 }
 
-var defaultTimeouts = timeouts{
-	preflight:      30 * time.Second,
-	create:         3 * time.Minute,
-	ready:          2 * time.Minute,
-	cleanup:        30 * time.Second,
-	retryInterval:  500 * time.Millisecond,
-	deadlineMargin: 5 * time.Second,
+var DefaultTimeouts = Timeouts{
+	Preflight:      30 * time.Second,
+	Create:         3 * time.Minute,
+	Ready:          2 * time.Minute,
+	Cleanup:        30 * time.Second,
+	RetryInterval:  500 * time.Millisecond,
+	DeadlineMargin: 5 * time.Second,
 }
 
-type env struct {
-	p          provider
-	ready      readyFunc
-	name       clusterName
+type Env struct {
+	p          Provider
+	ready      ReadyFunc
+	name       ClusterName
 	kubeconfig string
-	t          timeouts
+	t          Timeouts
 
 	report Report
 	// Set before Create: kind can return an error after its nodes already exist.
@@ -56,9 +56,9 @@ type env struct {
 	closeOnce sync.Once
 }
 
-func newEnv(p provider, ready readyFunc, kubeconfigPath string, t timeouts) *env {
-	name := newClusterName()
-	return &env{
+func NewEnv(p Provider, ready ReadyFunc, kubeconfigPath string, t Timeouts) *Env {
+	name := NewClusterName()
+	return &Env{
 		p:          p,
 		ready:      ready,
 		name:       name,
@@ -96,15 +96,15 @@ func causeOf(ctxErr error, otherwise Cause) Cause {
 	return otherwise
 }
 
-func (e *env) fail(cause Cause, err error) error {
+func (e *Env) Fail(cause Cause, err error) error {
 	e.report.Cause = cause
 	e.report.SetupErr = fmt.Errorf("%s: %w", e.report.Phase, err)
 	return e.report.SetupErr
 }
 
-func (e *env) start(ctx context.Context) error {
+func (e *Env) Start(ctx context.Context) error {
 	e.report.Phase = PhaseValidating
-	preflightCtx, cancelPreflight := context.WithTimeout(ctx, e.t.preflight)
+	preflightCtx, cancelPreflight := context.WithTimeout(ctx, e.t.Preflight)
 	defer cancelPreflight()
 	began := time.Now()
 	var existing []string
@@ -114,46 +114,46 @@ func (e *env) start(ctx context.Context) error {
 		return err
 	}); err != nil {
 		if ctx.Err() != nil {
-			return e.fail(causeOf(ctx.Err(), CausePreflight), fmt.Errorf("setup deadline reached during preflight: %w", ctx.Err()))
+			return e.Fail(causeOf(ctx.Err(), CausePreflight), fmt.Errorf("setup deadline reached during preflight: %w", ctx.Err()))
 		}
 		if preflightCtx.Err() != nil {
-			return e.fail(causeOf(preflightCtx.Err(), CausePreflight), fmt.Errorf("container runtime did not answer after %s: %w", time.Since(began).Round(time.Millisecond), err))
+			return e.Fail(causeOf(preflightCtx.Err(), CausePreflight), fmt.Errorf("container runtime did not answer after %s: %w", time.Since(began).Round(time.Millisecond), err))
 		}
-		return e.fail(CausePreflight, fmt.Errorf("container runtime unavailable: %w", err))
+		return e.Fail(CausePreflight, fmt.Errorf("container runtime unavailable: %w", err))
 	}
 	if slices.Contains(existing, string(e.name)) {
-		return e.fail(CausePreflight, fmt.Errorf("%w: %s", errNameTaken, e.name))
+		return e.Fail(CausePreflight, fmt.Errorf("%w: %s", ErrNameTaken, e.name))
 	}
 
 	e.report.Phase = PhaseProvisioning
 	e.mustDispose = true
 	e.createDone = make(chan error, 1)
 	go func() { e.createDone <- e.p.Create(string(e.name), e.kubeconfig) }()
-	createCtx, cancel := context.WithTimeout(ctx, e.t.create)
+	createCtx, cancel := context.WithTimeout(ctx, e.t.Create)
 	defer cancel()
 	began = time.Now()
 	select {
 	case err := <-e.createDone:
 		e.createDone = nil
 		e.report.CreateDuration = time.Since(began)
-		if errors.Is(err, errNameTaken) {
+		if errors.Is(err, ErrNameTaken) {
 			e.mustDispose = false
-			return e.fail(CauseProvisioning, err)
+			return e.Fail(CauseProvisioning, err)
 		}
 		if err != nil {
-			return e.fail(CauseProvisioning, err)
+			return e.Fail(CauseProvisioning, err)
 		}
 	case <-createCtx.Done():
 		e.report.CreateDuration = time.Since(began)
 		took := e.report.CreateDuration.Round(time.Millisecond)
 		if ctx.Err() != nil {
-			return e.fail(causeOf(ctx.Err(), CauseProvisioning), fmt.Errorf("setup deadline reached after %s of create: %w", took, ctx.Err()))
+			return e.Fail(causeOf(ctx.Err(), CauseProvisioning), fmt.Errorf("setup deadline reached after %s of create: %w", took, ctx.Err()))
 		}
-		return e.fail(causeOf(createCtx.Err(), CauseProvisioning), fmt.Errorf("create did not return after %s: %w", took, createCtx.Err()))
+		return e.Fail(causeOf(createCtx.Err(), CauseProvisioning), fmt.Errorf("create did not return after %s: %w", took, createCtx.Err()))
 	}
 
 	e.report.Phase = PhaseWaitUsable
-	readyCtx, cancelReady := context.WithTimeout(ctx, e.t.ready)
+	readyCtx, cancelReady := context.WithTimeout(ctx, e.t.Ready)
 	defer cancelReady()
 	began = time.Now()
 	err := e.ready(readyCtx, e.kubeconfig)
@@ -162,7 +162,7 @@ func (e *env) start(ctx context.Context) error {
 		if ctx.Err() != nil {
 			err = fmt.Errorf("setup deadline reached during readiness: %w", err)
 		}
-		return e.fail(causeOf(readyCtx.Err(), CauseReadiness), err)
+		return e.Fail(causeOf(readyCtx.Err(), CauseReadiness), err)
 	}
 	e.report.Phase = PhaseReady
 	return nil
@@ -170,7 +170,7 @@ func (e *env) start(ctx context.Context) error {
 
 // close disposes of the cluster. end is recorded as the cause only when
 // setup succeeded, so a setup failure is never overwritten.
-func (e *env) close(end Cause) Report {
+func (e *Env) Close(end Cause) Report {
 	e.closeOnce.Do(func() {
 		if e.report.Cause == CauseOK {
 			e.report.Cause = end
@@ -179,7 +179,7 @@ func (e *env) close(end Cause) Report {
 			e.report.Cleanup = CleanupNotNeeded
 			return
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), e.t.cleanup)
+		ctx, cancel := context.WithTimeout(context.Background(), e.t.Cleanup)
 		defer cancel()
 		began := time.Now()
 		e.report.Cleanup, e.report.CleanupErr, e.report.Remaining = e.dispose(ctx)
@@ -192,7 +192,7 @@ func (e *env) close(end Cause) Report {
 // the cluster. Only a listing taken after the latest Delete attempt can confirm
 // the cluster is present: kind's Delete can remove the nodes and still return
 // a kubeconfig error.
-func (e *env) dispose(ctx context.Context) (CleanupOutcome, error, []string) {
+func (e *Env) dispose(ctx context.Context) (CleanupOutcome, error, []string) {
 	var deleteErr, listErr error
 	present := false
 	for {
@@ -224,7 +224,7 @@ func (e *env) dispose(ctx context.Context) (CleanupOutcome, error, []string) {
 		}
 		select {
 		case <-ctx.Done():
-			err := errors.Join(fmt.Errorf("cleanup budget of %s ran out", e.t.cleanup), deleteErr, listErr)
+			err := errors.Join(fmt.Errorf("cleanup budget of %s ran out", e.t.Cleanup), deleteErr, listErr)
 			if present {
 				return CleanupFailed, err, []string{string(e.name)}
 			}
@@ -232,19 +232,19 @@ func (e *env) dispose(ctx context.Context) (CleanupOutcome, error, []string) {
 				err = errors.Join(err, errors.New("create still in flight; it may still start nodes"))
 			}
 			return CleanupUncertain, err, nil
-		case <-time.After(e.t.retryInterval):
+		case <-time.After(e.t.RetryInterval):
 		}
 	}
 }
 
-func (e *env) createInFlight() bool {
+func (e *Env) createInFlight() bool {
 	if e.createDone == nil {
 		return false
 	}
 	select {
 	case err := <-e.createDone:
 		e.createDone = nil
-		if errors.Is(err, errNameTaken) {
+		if errors.Is(err, ErrNameTaken) {
 			e.mustDispose = false
 		}
 		return false
@@ -252,3 +252,6 @@ func (e *env) createInFlight() bool {
 		return true
 	}
 }
+
+// Name is the cluster name this Env owns.
+func (e *Env) Name() string { return string(e.name) }

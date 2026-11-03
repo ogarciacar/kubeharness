@@ -1,4 +1,5 @@
-package kubeharness
+// Package kindcluster adapts kind's Go library to the lifecycle provider.
+package kindcluster
 
 import (
 	"bytes"
@@ -9,15 +10,18 @@ import (
 	"sigs.k8s.io/kind/pkg/cluster"
 	"sigs.k8s.io/kind/pkg/exec"
 	"sigs.k8s.io/kind/pkg/log"
+
+	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 )
 
-type kindProvider struct{ p *cluster.Provider }
+type Provider struct{ p *cluster.Provider }
 
-func newKindProvider() kindProvider {
-	return kindProvider{p: cluster.NewProvider(cluster.ProviderWithLogger(log.NoopLogger{}))}
+// New returns a provider that drives kind with Docker and logs nothing.
+func New() Provider {
+	return Provider{p: cluster.NewProvider(cluster.ProviderWithLogger(log.NoopLogger{}))}
 }
 
-func (k kindProvider) Create(name, kubeconfigPath string) error {
+func (k Provider) Create(name, kubeconfigPath string) error {
 	cfg := &v1alpha4.Cluster{}
 	// -1 lets the container runtime bind the API server port atomically.
 	// kind's default (0) probes a free port, releases it, then reuses it,
@@ -34,16 +38,16 @@ func (k kindProvider) Create(name, kubeconfigPath string) error {
 
 func kindCreateErr(err error) error {
 	if err != nil && strings.Contains(err.Error(), "already exist for a cluster with the name") {
-		return fmt.Errorf("%w: %v", errNameTaken, err)
+		return fmt.Errorf("%w: %v", lifecycle.ErrNameTaken, err)
 	}
 	return err
 }
 
-func (k kindProvider) Delete(name, kubeconfigPath string) error {
+func (k Provider) Delete(name, kubeconfigPath string) error {
 	return kindErr(k.p.Delete(name, kubeconfigPath))
 }
 
-func (k kindProvider) List() ([]string, error) {
+func (k Provider) List() ([]string, error) {
 	names, err := k.p.List()
 	return names, kindErr(err)
 }
@@ -57,4 +61,11 @@ func kindErr(err error) error {
 		}
 	}
 	return err
+}
+
+// Remedy removes a cluster's node containers with Docker alone, because the
+// kind CLI is not a prerequisite.
+func Remedy(name string) string {
+	ps := "docker ps -aq --filter label=io.x-k8s.kind.cluster=" + name
+	return fmt.Sprintf(`%s >/dev/null && for c in $(%s); do docker rm -f -v "$c"; done`, ps, ps)
 }

@@ -1,4 +1,4 @@
-package kubeharness
+package kube
 
 import (
 	"context"
@@ -16,6 +16,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+
+	"github.com/ogarciacar/kubeharness/internal/lifecycle/lifecycletest"
 )
 
 func readyNode(status corev1.ConditionStatus, reason string) *corev1.Node {
@@ -92,16 +94,16 @@ func TestWaitUsableStopsAtItsDeadlineWhenTheAPIServerNeverAnswers(t *testing.T) 
 		}
 	}()
 	kubeconfig := filepath.Join(t.TempDir(), "kubeconfig")
-	cfg := strings.ReplaceAll(fakeKubeconfig, "https://127.0.0.1:1", "http://"+ln.Addr().String())
+	cfg := strings.ReplaceAll(lifecycletest.FakeKubeconfig, "https://127.0.0.1:1", "http://"+ln.Addr().String())
 	if err := os.WriteFile(kubeconfig, []byte(cfg), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	defer cancel()
 	began := time.Now()
-	err = waitUsable(ctx, kubeconfig)
+	err = WaitUsable(ctx, kubeconfig)
 	if took := time.Since(began); err == nil || took > time.Second {
-		t.Fatalf("waitUsable took %s past a 300ms deadline: %v", took, err)
+		t.Fatalf("WaitUsable took %s past a 300ms deadline: %v", took, err)
 	}
 }
 
@@ -123,16 +125,16 @@ func TestEveryReadinessCallHonoursTheDeadline(t *testing.T) {
 			}))
 			defer srv.Close()
 			kubeconfig := filepath.Join(t.TempDir(), "kubeconfig")
-			cfg := strings.ReplaceAll(fakeKubeconfig, "https://127.0.0.1:1", srv.URL)
+			cfg := strings.ReplaceAll(lifecycletest.FakeKubeconfig, "https://127.0.0.1:1", srv.URL)
 			if err := os.WriteFile(kubeconfig, []byte(cfg), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 			defer cancel()
 			began := time.Now()
-			err := waitUsable(ctx, kubeconfig)
+			err := WaitUsable(ctx, kubeconfig)
 			if took := time.Since(began); err == nil || took > time.Second {
-				t.Fatalf("waitUsable took %s past a 300ms deadline while %s hung: %v", took, hang, err)
+				t.Fatalf("WaitUsable took %s past a 300ms deadline while %s hung: %v", took, hang, err)
 			}
 		})
 	}
