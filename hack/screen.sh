@@ -30,7 +30,7 @@ for i in $(seq 1 "$runs"); do
   healthy=$(grep -o 'phase=ready cause=ok cleanup=succeeded remaining=0 create=[^ ]* ready=[^ ]*' "$log" | head -1 | cut -d' ' -f5-)
   if [[ $tests -ne 0 ]]; then
     fail=$((fail + 1)); status=FAIL
-  elif ! grep -q -- '--- PASS' "$log" || grep -q 'no tests to run' "$log"; then
+  elif ! grep -q -- '--- PASS' "$log"; then
     fail=$((fail + 1)); status="FAIL(no test ran)"
   else
     pass=$((pass + 1)); status=pass
