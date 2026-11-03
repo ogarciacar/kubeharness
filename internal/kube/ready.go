@@ -1,4 +1,5 @@
-package kubeharness
+// Package kube holds the client-go code that observes and drives a cluster.
+package kube
 
 import (
 	"context"
@@ -13,10 +14,10 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// waitUsable polls until the API answers, every node is Ready, and the
+// WaitUsable polls until the API answers, every node is Ready, and the
 // default ServiceAccount exists. Pods cannot be created before that account
 // appears, so node readiness alone is not usable readiness.
-func waitUsable(ctx context.Context, kubeconfigPath string) error {
+func WaitUsable(ctx context.Context, kubeconfigPath string) error {
 	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
 	if err != nil {
 		return fmt.Errorf("load kubeconfig: %w", err)

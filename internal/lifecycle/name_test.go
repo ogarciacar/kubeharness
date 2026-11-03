@@ -1,4 +1,4 @@
-package kubeharness
+package lifecycle
 
 import (
 	"regexp"
@@ -6,9 +6,9 @@ import (
 )
 
 func TestClusterNamesAreUniqueAndValidForKind(t *testing.T) {
-	seen := make(map[clusterName]bool)
+	seen := make(map[ClusterName]bool)
 	for range 10000 {
-		n := newClusterName()
+		n := NewClusterName()
 		if n == "" {
 			t.Fatal("generated an empty name, which kind would resolve to the developer's \"kind\" cluster")
 		}

@@ -10,6 +10,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ogarciacar/kubeharness/internal/kindcluster"
+	"github.com/ogarciacar/kubeharness/internal/lifecycle"
+	"github.com/ogarciacar/kubeharness/internal/lifecycle/lifecycletest"
 )
 
 type fakeTB struct {
@@ -55,15 +59,15 @@ func (f *fakeTB) run(body func()) {
 }
 
 func TestSetupFailureFailsTestAndStillCleansUp(t *testing.T) {
-	f := newFake()
-	f.createAllocatesThenFails = true
+	f := lifecycletest.NewFake()
+	f.CreateAllocatesThenFails = true
 	tb := &fakeTB{dir: t.TempDir()}
 	tb.run(func() { newHarness(tb, f, readyOK, fastTimeouts) })
 
 	if len(tb.fatals) != 1 || !strings.Contains(tb.fatals[0], "setup failed") {
 		t.Fatalf("fatals = %q", tb.fatals)
 	}
-	if _, _, live := f.counts(); live != 0 {
+	if _, _, live := f.Counts(); live != 0 {
 		t.Fatal("cluster leaked after setup failure")
 	}
 	if len(tb.logs) != 1 || !strings.Contains(tb.logs[0], "cause=provisioning cleanup=succeeded") {
@@ -72,20 +76,20 @@ func TestSetupFailureFailsTestAndStillCleansUp(t *testing.T) {
 }
 
 func TestCleanupFailureIsItsOwnTestErrorWithRemedy(t *testing.T) {
-	f := newFake()
-	f.deleteKeepsCluster = true
-	f.deleteErrs = slices.Repeat([]error{errors.New("docker rm failed")}, 1000)
+	f := lifecycletest.NewFake()
+	f.DeleteKeepsCluster = true
+	f.DeleteErrs = slices.Repeat([]error{errors.New("docker rm failed")}, 1000)
 	tb := &fakeTB{dir: t.TempDir()}
 	var h *Harness
 	to := fastTimeouts
-	to.retryInterval = time.Hour
-	to.cleanup = time.Second
+	to.RetryInterval = time.Hour
+	to.Cleanup = time.Second
 	tb.run(func() { h = newHarness(tb, f, readyOK, to) })
 
 	if len(tb.fatals) != 0 {
 		t.Fatalf("setup should have passed: %q", tb.fatals)
 	}
-	want := remedy(h.ClusterName())
+	want := kindcluster.Remedy(h.ClusterName())
 	if len(tb.errs) != 1 || !strings.Contains(tb.errs[0], want) {
 		t.Fatalf("errs = %q, want remedy %q", tb.errs, want)
 	}
@@ -95,19 +99,19 @@ func TestCleanupFailureIsItsOwnTestErrorWithRemedy(t *testing.T) {
 }
 
 func TestSetupLeavesCleanupAndMarginBeforeTestDeadline(t *testing.T) {
-	f := newFake()
-	f.createBlock = make(chan struct{})
-	defer close(f.createBlock)
-	f.deleteBlock = make(chan struct{})
-	defer close(f.deleteBlock)
+	f := lifecycletest.NewFake()
+	f.CreateBlock = make(chan struct{})
+	defer close(f.CreateBlock)
+	f.DeleteBlock = make(chan struct{})
+	defer close(f.DeleteBlock)
 	to := fastTimeouts
-	to.create = time.Hour
-	deadline := time.Now().Add(to.cleanup + to.deadlineMargin + 300*time.Millisecond)
+	to.Create = time.Hour
+	deadline := time.Now().Add(to.Cleanup + to.DeadlineMargin + 300*time.Millisecond)
 	tb := &fakeTB{dir: t.TempDir(), deadline: deadline}
 	tb.run(func() { newHarness(tb, f, readyOK, to) })
 
-	if left := time.Until(deadline); left < to.deadlineMargin/2 {
-		t.Fatalf("cleanup finished %s before the test deadline, want about %s of margin", left, to.deadlineMargin)
+	if left := time.Until(deadline); left < to.DeadlineMargin/2 {
+		t.Fatalf("cleanup finished %s before the test deadline, want about %s of margin", left, to.DeadlineMargin)
 	}
 	if len(tb.logs) != 1 || !strings.Contains(tb.logs[0], "cause=deadline") {
 		t.Fatalf("report line = %q", tb.logs)
@@ -115,13 +119,13 @@ func TestSetupLeavesCleanupAndMarginBeforeTestDeadline(t *testing.T) {
 }
 
 func TestOverrunningTestBodyGetsClusterDisposedBeforeDeadline(t *testing.T) {
-	f := newFake()
-	f.deleteDelay = 250 * time.Millisecond
+	f := lifecycletest.NewFake()
+	f.DeleteDelay = 250 * time.Millisecond
 	var out strings.Builder
 	stderr = &out
 	defer func() { stderr = os.Stderr }()
 	to := fastTimeouts
-	deadline := time.Now().Add(to.cleanup + to.deadlineMargin + 300*time.Millisecond)
+	deadline := time.Now().Add(to.Cleanup + to.DeadlineMargin + 300*time.Millisecond)
 	tb := &fakeTB{dir: t.TempDir(), deadline: deadline}
 	var name string
 	var liveAtDeadline int
@@ -129,7 +133,7 @@ func TestOverrunningTestBodyGetsClusterDisposedBeforeDeadline(t *testing.T) {
 		h := newHarness(tb, f, readyOK, to)
 		name = h.ClusterName()
 		time.Sleep(time.Until(deadline))
-		_, _, liveAtDeadline = f.counts()
+		_, _, liveAtDeadline = f.Counts()
 	})
 	if liveAtDeadline != 0 {
 		t.Fatal("cluster still present when go test would panic on -timeout")
@@ -144,33 +148,33 @@ func TestOverrunningTestBodyGetsClusterDisposedBeforeDeadline(t *testing.T) {
 
 // stderrAtCreate records what stderr held when Create was called.
 type stderrAtCreate struct {
-	*fakeProvider
+	*lifecycletest.Fake
 	out  *strings.Builder
 	seen string
 }
 
 func (p *stderrAtCreate) Create(name, kc string) error {
 	p.seen = p.out.String()
-	return p.fakeProvider.Create(name, kc)
+	return p.Fake.Create(name, kc)
 }
 
 func TestClusterNameReachesStderrBeforeCreate(t *testing.T) {
 	var out strings.Builder
 	stderr = &out
 	defer func() { stderr = os.Stderr }()
-	p := &stderrAtCreate{fakeProvider: newFake(), out: &out}
+	p := &stderrAtCreate{Fake: lifecycletest.NewFake(), out: &out}
 	tb := &fakeTB{dir: t.TempDir()}
 	var name string
 	tb.run(func() { name = newHarness(tb, p, readyOK, fastTimeouts).ClusterName() })
-	if !strings.Contains(p.seen, remedy(name)) {
+	if !strings.Contains(p.seen, kindcluster.Remedy(name)) {
 		t.Fatalf("cluster name and remedy not on stderr when Create started: %q", p.seen)
 	}
 }
 
 func TestUncertainCleanupFailsTheTest(t *testing.T) {
-	f := newFake()
-	f.createBlock = make(chan struct{})
-	defer close(f.createBlock)
+	f := lifecycletest.NewFake()
+	f.CreateBlock = make(chan struct{})
+	defer close(f.CreateBlock)
 	tb := &fakeTB{dir: t.TempDir()}
 	tb.run(func() { newHarness(tb, f, readyOK, fastTimeouts) })
 	if len(tb.errs) != 1 || !strings.Contains(tb.errs[0], "cleanup uncertain") {
@@ -179,11 +183,11 @@ func TestUncertainCleanupFailsTheTest(t *testing.T) {
 }
 
 func TestTimeoutTooShortForCleanupFailsBeforeCreating(t *testing.T) {
-	f := newFake()
+	f := lifecycletest.NewFake()
 	to := fastTimeouts
-	tb := &fakeTB{dir: t.TempDir(), deadline: time.Now().Add(to.cleanup + to.deadlineMargin - 10*time.Millisecond)}
+	tb := &fakeTB{dir: t.TempDir(), deadline: time.Now().Add(to.Cleanup + to.DeadlineMargin - 10*time.Millisecond)}
 	tb.run(func() { newHarness(tb, f, readyOK, to) })
-	creates, _, _ := f.counts()
+	creates, _, _ := f.Counts()
 	if creates != 0 || len(tb.fatals) != 1 || !strings.Contains(tb.fatals[0], "-timeout") {
 		t.Fatalf("creates=%d fatals=%q", creates, tb.fatals)
 	}
@@ -193,22 +197,22 @@ func TestTimeoutTooShortForCleanupFailsBeforeCreating(t *testing.T) {
 }
 
 func TestFailedEarlyDisposalSaysSoAndGivesTheRemedy(t *testing.T) {
-	f := newFake()
-	f.deleteKeepsCluster = true
-	f.deleteErrs = slices.Repeat([]error{errors.New("docker rm -f: permission denied")}, 1000)
+	f := lifecycletest.NewFake()
+	f.DeleteKeepsCluster = true
+	f.DeleteErrs = slices.Repeat([]error{errors.New("docker rm -f: permission denied")}, 1000)
 	var out strings.Builder
 	stderr = &out
 	defer func() { stderr = os.Stderr }()
 	to := fastTimeouts
-	to.retryInterval = time.Hour
-	deadline := time.Now().Add(to.cleanup + to.deadlineMargin + 300*time.Millisecond)
+	to.RetryInterval = time.Hour
+	deadline := time.Now().Add(to.Cleanup + to.DeadlineMargin + 300*time.Millisecond)
 	tb := &fakeTB{dir: t.TempDir(), deadline: deadline}
 	var name string
 	tb.run(func() {
 		name = newHarness(tb, f, readyOK, to).ClusterName()
 		time.Sleep(time.Until(deadline))
 	})
-	if strings.Contains(out.String(), "disposed cluster") || !strings.Contains(out.String(), "cleanup failed for cluster "+name) || !strings.Contains(out.String(), remedy(name)) {
+	if strings.Contains(out.String(), "disposed cluster") || !strings.Contains(out.String(), "cleanup failed for cluster "+name) || !strings.Contains(out.String(), kindcluster.Remedy(name)) {
 		t.Fatalf("failed early disposal reported as done: %q", out.String())
 	}
 }
@@ -216,7 +220,7 @@ func TestFailedEarlyDisposalSaysSoAndGivesTheRemedy(t *testing.T) {
 func TestRESTConfigReturnsACopy(t *testing.T) {
 	tb := &fakeTB{dir: t.TempDir()}
 	var h *Harness
-	tb.run(func() { h = newHarness(tb, newFake(), readyOK, fastTimeouts) })
+	tb.run(func() { h = newHarness(tb, lifecycletest.NewFake(), readyOK, fastTimeouts) })
 	a := h.RESTConfig()
 	a.Host = "https://changed.invalid"
 	if h.RESTConfig().Host == a.Host {
@@ -224,10 +228,13 @@ func TestRESTConfigReturnsACopy(t *testing.T) {
 	}
 }
 
-func TestRemedyRemovesExactlyTheClusterNodesAndTheirVolumes(t *testing.T) {
-	ps := "docker ps -aq --filter label=io.x-k8s.kind.cluster=kh-abc-1"
-	want := ps + " >/dev/null && for c in $(" + ps + "); do docker rm -f -v \"$c\"; done"
-	if got := remedy("kh-abc-1"); got != want {
-		t.Fatalf("remedy = %q, want %q", got, want)
-	}
+func readyOK(context.Context, string) error { return nil }
+
+var fastTimeouts = lifecycle.Timeouts{
+	Preflight:      200 * time.Millisecond,
+	DeadlineMargin: 100 * time.Millisecond,
+	Create:         200 * time.Millisecond,
+	Ready:          200 * time.Millisecond,
+	Cleanup:        300 * time.Millisecond,
+	RetryInterval:  10 * time.Millisecond,
 }
