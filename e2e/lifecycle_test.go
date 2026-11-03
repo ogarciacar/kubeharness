@@ -4,9 +4,6 @@ package e2e_test
 
 import (
 	"context"
-	"github.com/ogarciacar/kubeharness/internal/kindcluster"
-	"github.com/ogarciacar/kubeharness/internal/kube"
-	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +13,10 @@ import (
 	"time"
 
 	"sigs.k8s.io/kind/pkg/apis/config/defaults"
+
+	"github.com/ogarciacar/kubeharness/internal/kindcluster"
+	"github.com/ogarciacar/kubeharness/internal/kube"
+	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 )
 
 // A node that stops responding mid-create makes kind's Create block with no

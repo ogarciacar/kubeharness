@@ -13,9 +13,6 @@ package kubeharness
 import (
 	"context"
 	"fmt"
-	"github.com/ogarciacar/kubeharness/internal/kindcluster"
-	"github.com/ogarciacar/kubeharness/internal/kube"
-	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 	"io"
 	"os"
 	"path/filepath"
@@ -24,6 +21,10 @@ import (
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/ogarciacar/kubeharness/internal/kindcluster"
+	"github.com/ogarciacar/kubeharness/internal/kube"
+	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 )
 
 var stderr io.Writer = os.Stderr

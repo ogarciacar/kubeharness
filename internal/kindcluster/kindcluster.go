@@ -4,13 +4,14 @@ package kindcluster
 import (
 	"bytes"
 	"fmt"
-	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 	"strings"
 
 	"sigs.k8s.io/kind/pkg/apis/config/v1alpha4"
 	"sigs.k8s.io/kind/pkg/cluster"
 	"sigs.k8s.io/kind/pkg/exec"
 	"sigs.k8s.io/kind/pkg/log"
+
+	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 )
 
 type Provider struct{ p *cluster.Provider }

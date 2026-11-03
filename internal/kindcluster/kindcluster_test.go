@@ -2,11 +2,12 @@ package kindcluster
 
 import (
 	"errors"
-	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 	"strings"
 	"testing"
 
 	"sigs.k8s.io/kind/pkg/exec"
+
+	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 )
 
 func TestKindNameCollisionErrorMapsToErrNameTaken(t *testing.T) {

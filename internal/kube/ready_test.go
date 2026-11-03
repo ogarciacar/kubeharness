@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ogarciacar/kubeharness/internal/lifecycle/lifecycletest"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +16,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+
+	"github.com/ogarciacar/kubeharness/internal/lifecycle/lifecycletest"
 )
 
 func readyNode(status corev1.ConditionStatus, reason string) *corev1.Node {

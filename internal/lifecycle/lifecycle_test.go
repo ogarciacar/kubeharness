@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ogarciacar/kubeharness/internal/lifecycle/lifecycletest"
 	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/ogarciacar/kubeharness/internal/lifecycle/lifecycletest"
 )
 
 func readyOK(context.Context, string) error { return nil }

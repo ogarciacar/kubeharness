@@ -4,15 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ogarciacar/kubeharness/internal/kindcluster"
-	"github.com/ogarciacar/kubeharness/internal/lifecycle"
-	"github.com/ogarciacar/kubeharness/internal/lifecycle/lifecycletest"
 	"os"
 	"runtime"
 	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ogarciacar/kubeharness/internal/kindcluster"
+	"github.com/ogarciacar/kubeharness/internal/lifecycle"
+	"github.com/ogarciacar/kubeharness/internal/lifecycle/lifecycletest"
 )
 
 type fakeTB struct {
