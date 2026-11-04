@@ -26,6 +26,13 @@ jobs:
       - run: go vet ./... && go vet -tags e2e ./...
       - run: go mod tidy -diff
       - run: go test -race -count=1 ./...
+      - name: examples/orders
+        run: |
+          go -C examples/orders/service vet ./...
+          go -C examples/orders/service mod tidy -diff
+          go -C examples/orders/service test -race -count=1 ./...
+          go -C examples/orders vet ./... && go -C examples/orders vet -tags e2e ./...
+          go -C examples/orders mod tidy -diff
 
   e2e:
     needs: unit
@@ -40,3 +47,17 @@ jobs:
       - name: leaks
         if: always()
         run: hack/leaks.sh
+
+  m01:
+    needs: unit
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go -C examples/orders test -race -tags e2e -count=1 -timeout 25m -v ./...
+      - name: leaks
+        if: always()
+        run: hack/leaks.sh '^(kh|m01-baseline)-' 
