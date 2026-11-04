@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loaded
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: loaded}
+  template:
+    metadata:
+      labels: {app: loaded}
+    spec:
+      containers:
+        - name: loaded
+          image: kubeharness.local/e2e-loaded:v1
+          imagePullPolicy: Never
+          args: [pause]

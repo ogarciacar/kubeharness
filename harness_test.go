@@ -238,3 +238,58 @@ var fastTimeouts = lifecycle.Timeouts{
 	Cleanup:        300 * time.Millisecond,
 	RetryInterval:  10 * time.Millisecond,
 }
+
+func TestOperationsEndBeforeTheEvidenceAndCleanupWindow(t *testing.T) {
+	end := time.Now().Add(200 * time.Millisecond)
+	h := &Harness{opsEndBy: end}
+	ctx, evidence, cancel := h.op(time.Hour)
+	defer cancel()
+	if d, _ := ctx.Deadline(); !d.Equal(end) {
+		t.Fatalf("operation deadline %s, want opsEndBy %s", d, end)
+	}
+	if d, _ := evidence.Deadline(); !d.Equal(end.Add(evidenceTimeout)) {
+		t.Fatalf("evidence deadline %s, want %s after the operation", d, evidenceTimeout)
+	}
+	unbounded := &Harness{}
+	ctx, _, cancel2 := unbounded.op(time.Minute)
+	defer cancel2()
+	if d, _ := ctx.Deadline(); time.Until(d) > time.Minute || time.Until(d) < 59*time.Second {
+		t.Fatalf("operation without a test deadline should use its own limit, got %s", time.Until(d))
+	}
+}
+
+type hungLoader struct{ release chan struct{} }
+
+func (l hungLoader) LoadImage(string, string) error { <-l.release; return nil }
+
+func TestHungImageLoadStopsAtTheOperationDeadline(t *testing.T) {
+	l := hungLoader{release: make(chan struct{})}
+	defer close(l.release)
+	tb := &fakeTB{dir: t.TempDir()}
+	h := &Harness{t: tb, name: "kh-x-1", images: l, opsEndBy: time.Now().Add(200 * time.Millisecond)}
+	began := time.Now()
+	tb.run(func() { h.LoadImage("kubeharness.local/app:1") })
+	if took := time.Since(began); took > 2*time.Second || len(tb.fatals) != 1 || !strings.Contains(tb.fatals[0], "did not finish") {
+		t.Fatalf("took %s, fatals %q", took, tb.fatals)
+	}
+}
+
+func TestLoadImageNeedsAnImageLoadingProvider(t *testing.T) {
+	tb := &fakeTB{dir: t.TempDir()}
+	h := &Harness{t: tb, name: "kh-x-1"}
+	tb.run(func() { h.LoadImage("kubeharness.local/app:1") })
+	if len(tb.fatals) != 1 || !strings.Contains(tb.fatals[0], "cannot load local images") {
+		t.Fatalf("fatals %q", tb.fatals)
+	}
+}
+
+func TestStoppingEarlyForTheTestTimeoutSaysSo(t *testing.T) {
+	l := hungLoader{release: make(chan struct{})}
+	defer close(l.release)
+	tb := &fakeTB{dir: t.TempDir()}
+	h := &Harness{t: tb, name: "kh-x-1", images: l, opsEndBy: time.Now().Add(200 * time.Millisecond)}
+	tb.run(func() { h.LoadImage("kubeharness.local/app:1") })
+	if len(tb.fatals) != 1 || !strings.Contains(tb.fatals[0], "stopped early so cleanup fits before go test -timeout") {
+		t.Fatalf("fatals %q", tb.fatals)
+	}
+}
