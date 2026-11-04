@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"sigs.k8s.io/kind/pkg/exec"
+	kindexec "sigs.k8s.io/kind/pkg/exec"
 
 	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 )
@@ -21,7 +21,7 @@ func TestKindNameCollisionErrorMapsToErrNameTaken(t *testing.T) {
 }
 
 func TestKindErrorsKeepDockersReason(t *testing.T) {
-	err := kindErr(&exec.RunError{
+	err := kindErr(&kindexec.RunError{
 		Command: []string{"docker", "rm", "-f", "kh-x-1-control-plane"},
 		Output:  []byte("Error response from daemon: permission denied\n"),
 		Inner:   errors.New("exit status 1"),
@@ -39,5 +39,15 @@ func TestRemedyRemovesExactlyTheClusterNodesAndTheirVolumes(t *testing.T) {
 	want := ps + " >/dev/null && for c in $(" + ps + "); do docker rm -f -v \"$c\"; done"
 	if got := Remedy("kh-abc-1"); got != want {
 		t.Fatalf("remedy = %q, want %q", got, want)
+	}
+}
+
+func TestSaveWithoutPlatformOnlyForDaemonsThatRejectTheFlag(t *testing.T) {
+	old := `"--platform" requires API version 1.48, but the Docker daemon API version is 1.47`
+	if !platformUnsupported([]byte(old)) {
+		t.Error("an older daemon's rejection of --platform was not recognized")
+	}
+	if platformUnsupported([]byte("Error response from daemon: No such image: kubeharness.local/app:1")) {
+		t.Error("a missing image was mistaken for an old daemon")
 	}
 }

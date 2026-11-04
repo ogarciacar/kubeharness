@@ -4,11 +4,15 @@ package kindcluster
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"sigs.k8s.io/kind/pkg/apis/config/v1alpha4"
 	"sigs.k8s.io/kind/pkg/cluster"
-	"sigs.k8s.io/kind/pkg/exec"
+	"sigs.k8s.io/kind/pkg/cluster/nodeutils"
+	kindexec "sigs.k8s.io/kind/pkg/exec"
 	"sigs.k8s.io/kind/pkg/log"
 
 	"github.com/ogarciacar/kubeharness/internal/lifecycle"
@@ -55,7 +59,7 @@ func (k Provider) List() ([]string, error) {
 // kindErr appends the command output kind captured, because RunError.Error
 // omits it and Docker's reason lives there.
 func kindErr(err error) error {
-	if re := exec.RunErrorForError(err); re != nil {
+	if re := kindexec.RunErrorForError(err); re != nil {
 		if out := bytes.TrimSpace(re.Output); len(out) > 0 {
 			return fmt.Errorf("%w: %s", err, out)
 		}
@@ -68,4 +72,57 @@ func kindErr(err error) error {
 func Remedy(name string) string {
 	ps := "docker ps -aq --filter label=io.x-k8s.kind.cluster=" + name
 	return fmt.Sprintf(`%s >/dev/null && for c in $(%s); do docker rm -f -v "$c"; done`, ps, ps)
+}
+
+// LoadImage copies an image from the local Docker daemon into every node of
+// the cluster, so Pods can use it with imagePullPolicy Never. kubelet still
+// refuses such a Pod when it already pulled the same image content from a
+// registry under another name, because it then checks its own pull records.
+func (k Provider) LoadImage(name, ref string) error {
+	nodes, err := k.p.ListInternalNodes(name)
+	if err != nil {
+		return kindErr(err)
+	}
+	if len(nodes) == 0 {
+		return fmt.Errorf("cluster %s has no nodes", name)
+	}
+	dir, err := os.MkdirTemp("", "kubeharness-image-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(dir)
+	// kind runs nodes as containers on this daemon, so the daemon's platform is
+	// the nodes' platform. Saving only that platform matters with Docker's
+	// containerd image store: a pulled multi-platform image keeps just the local
+	// platform's layers, and kind's import fails on the missing ones.
+	platform, err := exec.Command("docker", "version", "--format", "{{.Server.Os}}/{{.Server.Arch}}").Output()
+	if err != nil {
+		return fmt.Errorf("docker version: %w", err)
+	}
+	archive := filepath.Join(dir, "image.tar")
+	out, err := exec.Command("docker", "save", "--platform", string(bytes.TrimSpace(platform)), "-o", archive, ref).CombinedOutput()
+	if err != nil && platformUnsupported(out) {
+		out, err = exec.Command("docker", "save", "-o", archive, ref).CombinedOutput()
+	}
+	if err != nil {
+		return fmt.Errorf("docker save %s: %w: %s", ref, err, bytes.TrimSpace(out))
+	}
+	for _, n := range nodes {
+		f, err := os.Open(archive)
+		if err != nil {
+			return err
+		}
+		err = nodeutils.LoadImageArchive(n, f)
+		f.Close()
+		if err != nil {
+			return fmt.Errorf("load %s into node %s: %w", ref, n.String(), kindErr(err))
+		}
+	}
+	return nil
+}
+
+// platformUnsupported recognizes a Docker daemon older than API 1.48, which
+// rejects docker save --platform.
+func platformUnsupported(out []byte) bool {
+	return bytes.Contains(out, []byte(`"--platform" requires API version`))
 }

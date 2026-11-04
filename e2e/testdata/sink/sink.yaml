@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sink
+  labels: {app: sink}
+spec:
+  containers:
+    - name: sink
+      image: registry.k8s.io/e2e-test-images/agnhost@sha256:352a050380078cb2a1c246357a0dfa2fcf243ee416b92ff28b44a01d1b4b0294
+      command: [sh, -c, 'nc -lk 8080 | sleep 3600']
+      readinessProbe:
+        tcpSocket: {port: 8080}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sink
+spec:
+  selector: {app: sink}
+  ports: [{port: 8080}]

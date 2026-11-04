@@ -1,0 +1,6 @@
+apiVersion: e2e.kubeharness.dev/v1
+kind: Widget
+metadata:
+  name: w
+spec:
+  size: 3
