@@ -1,7 +1,7 @@
 # KubeHarness — Concept and Planning Baseline
 
-> **Document status:** Proposed system concept, not an implementation specification.  
-> **Last reviewed:** 2026-11-02.  
+> **Document status:** Proposed system concept. S0 to S2 are implemented; everything from S3 on is still a proposal.  
+> **Last reviewed:** 2026-11-04.  
 > **Audience:** Maintainer, reviewers, contributors, and pstack planning agents.  
 > **Source of truth for:** Product boundary, accepted direction, candidate requirements, lifecycle and platform architecture, verification experiments, success measures, and open questions.  
 > **Companion:** [README.md](README.md) provides the public-facing introduction.
@@ -42,6 +42,14 @@ These are the **agreed direction** from concept discussions. Detailed contracts 
 | D12 | Cleanup, diagnostics, cancellation and failure preservation are core, not afterthoughts | Agreed direction | The tool's value depends on infrastructure ownership |
 | D13 | Only an initial, appropriately scoped **Go library** is assumed; CLI, YAML schema and plug-in SDK are *not* committed | Open design | Avoid building an unused configuration language or second product |
 | D14 | Explicit profile version compatibility and pinned test images/dependencies | Agreed direction | Avoid nondeterministic upstream drift |
+| D15 | Drive Kind through its Go library, not the `kind` CLI | Decided (S1) | Docker is the only prerequisite. kind's `Create` can block forever, so the harness stops waiting at its deadline instead of interrupting it |
+| D16 | One owned cluster per test, created by `New(t)` and deleted in `t.Cleanup`. Methods must be called from the test that created the `Harness` | Decided (S1, S2) | Simplest correct isolation. A cluster shared by a package's tests is still open (question 2). Taking `t` in every method would allow subtests |
+| D17 | Docker picks the API server port (kind `apiServerPort: -1`) | Decided (S1) | kind's default probes a free port, releases it, then reuses it, which races between parallel clusters |
+| D18 | Setup and every operation end by `-timeout` minus the cleanup budget and a 5s margin. A watchdog disposes of the cluster early if the test body overruns | Decided (S1, S2) | `go test`'s `-timeout` panic skips cleanups, so everything must finish before it |
+| D19 | Cleanup is `succeeded` only from a listing taken after `Create` returned; `failed` only from a listing after the latest Delete that still shows the cluster; otherwise `uncertain`. `failed` and `uncertain` fail the test with a Docker-only remove command | Decided (S1) | A report that says `succeeded` must be true, and kind's `Delete` can remove nodes and still return an error |
+| D20 | Server-side apply through client-go, and host access through client-go port-forward on loopback only | Decided (S2) | No `kubectl` dependency and no `New` options. Traffic origin is host to API server to one Pod, which proves the app, not a Service, Gateway, or mesh path |
+| D21 | The library loads locally built images and never builds or pulls them | Decided (S2) | Keeps build tooling out of the library. kubelet refuses a loaded tag that it already pulled under another name |
+| D22 | Examples live in their own Go modules next to a plain kind + kubectl + Go baseline of the same scenario | Decided (S2) | Example dependencies stay out of the library, and every slice keeps a rerunnable effort and time comparison (§9) |
 
 **Clarification:** The Kubernetes **Gateway API is an API specification**, not a built-in gateway data plane. Using a “native Gateway API” does not remove the need for a controller/proxy. Envoy Gateway is the initial default implementation.
 
@@ -468,16 +476,16 @@ No single aggregate `PASS` should hide secondary operational failures. Possible 
 
 The **priority** of a profile is distinct from exact version numbering; do not equate P1 with semantic version 1.0 or P2 with version 2.0. **v2.0.0 is reserved as the earliest investigation boundary for existing-cluster support.**
 
-| Suggested slice | Visible product outcome | Acceptance / proof |
-| --- | --- | --- |
-| S0 — Foundation | Small Go module, local test runner and testability seams | Fast unit tests, Docker prereq detection, documented pinned toolchain |
-| S1 — Owned lifecycle | Create and dispose of a Kind cluster safely | Partial failures, cancellation, double cleanup, deadline and leak tests |
-| S2 — M01 vertical slice | Orders + PostgreSQL + migrations | One reproducible end-to-end test; negative migration scenario; diagnostics |
-| S3 — Gateway API | Envoy Gateway standard profile | G01/G02/G03, resource status and data-plane evidence |
-| S4 — Agentgateway | Kubernetes-native MCP profiles | A01/A02/A03 with deterministic tool servers and identities |
-| S5 — Istio | East-west networking profile | I01/I02/I03 with explicit traffic-origin checks |
-| S6 — Agent Router | Envoy AI routing profile | R01/R02/R03 with local mock providers and Redis |
-| Future v2.0.0 investigation | Existing staging cluster design | Ownership, RBAC, read-only/mutation policies, cleanup safety, data isolation and explicit opt-in |
+| Suggested slice | Visible product outcome | Acceptance / proof | Status |
+| --- | --- | --- | --- |
+| S0 — Foundation | Small Go module, local test runner and testability seams | Fast unit tests, Docker prereq detection, documented pinned toolchain | Done (#1, #2) |
+| S1 — Owned lifecycle | Create and dispose of a Kind cluster safely | Partial failures, cancellation, double cleanup, deadline and leak tests | Done (#1) |
+| S2 — M01 vertical slice | Orders + PostgreSQL + migrations | One reproducible end-to-end test; negative migration scenario; diagnostics | Done (#3, #4), accepted |
+| S3 — Gateway API | Envoy Gateway standard profile | G01/G02/G03, resource status and data-plane evidence | Next |
+| S4 — Agentgateway | Kubernetes-native MCP profiles | A01/A02/A03 with deterministic tool servers and identities | Proposed |
+| S5 — Istio | East-west networking profile | I01/I02/I03 with explicit traffic-origin checks | Proposed |
+| S6 — Agent Router | Envoy AI routing profile | R01/R02/R03 with local mock providers and Redis | Proposed |
+| Future v2.0.0 investigation | Existing staging cluster design | Ownership, RBAC, read-only/mutation policies, cleanup safety, data isolation and explicit opt-in | Deferred |
 
 ### S1 lifecycle acceptance examples
 
@@ -495,6 +503,19 @@ The **priority** of a profile is distinct from exact version numbering; do not e
 - A failed migration blocks business assertions and yields actionable Job status/logs.
 - Test success, diagnostics status and teardown are recorded separately.
 - A baseline implementation is retained for effort/performance comparison.
+
+### S2 result: accept
+
+Measured with `examples/orders/setuplines` and `examples/orders/compare.sh`, on Docker Desktop with kind v0.33.0 and Kubernetes v1.37.0:
+
+| | kubeharness | plain kind + kubectl + Go |
+| --- | --- | --- |
+| Setup code lines | 8 | 70 |
+| Wall time, median of 5 alternating runs | 38.5s (37.0 to 39.5s) | 40.0s (38.5 to 40.6s) |
+
+The time difference is within run-to-run variation; cluster creation takes about 25s of each run. Both setups stop on a failed migration with the Job's logs. The harness cuts setup code by about nine tenths at no measurable time cost, so S2 is accepted. Its open item is the per-test cluster cost, which S3 will multiply by installing Envoy Gateway in every cluster (question 2).
+
+One acceptance example is partly met: setup, test, and cleanup outcomes are separate fields of the report line, but there is no diagnostics field. Evidence is carried in failure messages instead.
 
 ## 11. Design risks, trade-offs and mitigations
 
@@ -516,21 +537,21 @@ The **priority** of a profile is distinct from exact version numbering; do not e
 
 ## 12. Open questions for pstack planning
 
-These are deliberately **not** resolved by this concept. Prefer narrow decisions tied to the next executable slice.
+These are deliberately **not** resolved by this concept. Prefer narrow decisions tied to the next executable slice. Questions answered by S1 and S2 point to their decision (D15 to D22); the rest stay open.
 
-1. **Public Go lifecycle API:** Should `New(t)` register cleanup immediately, return a resource handle with explicit `Close`, or both? How are errors surfaced without hiding `testing.T` failures?
-2. **Execution ownership:** Is one cluster created per test, per package, or per suite? What is the default and what is opt-in?
-3. **Contexts:** How are run, setup, per-operation, evidence and cleanup deadlines separated? How do late watchers or tasks terminate?
-4. **Installation:** Use Kubernetes `client-go`, Helm SDK, external commands, or an intentionally small hybrid? What are the consequences for CI?
-5. **Manifests and resource inventory:** How does KubeHarness track ownership and rollback after partially successful apply?
-6. **Endpoint resolution:** Port forwarding, Kind port mappings, in-cluster probe, or combinations based on traffic origin? How are port races handled?
-7. **Readiness abstraction:** Which stock observations are necessary for S1/S2, and how are application-defined usability checks expressed?
+1. **Public Go lifecycle API:** Should `New(t)` register cleanup immediately, return a resource handle with explicit `Close`, or both? How are errors surfaced without hiding `testing.T` failures? *Answered (D16):* `New(t)` registers cleanup immediately and has no explicit `Close`; setup failures call `t.Fatalf`, cleanup failures call `t.Errorf`.
+2. **Execution ownership:** Is one cluster created per test, per package, or per suite? What is the default and what is opt-in? *Partly answered (D16):* one cluster per test is the default. A package-level cluster is open and is the main cost question for S3.
+3. **Contexts:** How are run, setup, per-operation, evidence and cleanup deadlines separated? How do late watchers or tasks terminate? *Answered (D18):* setup and operations share a deadline of `-timeout` minus cleanup and margin, evidence gets its own 10s, cleanup its own budget, and calls that ignore contexts are abandoned and reported.
+4. **Installation:** Use Kubernetes `client-go`, Helm SDK, external commands, or an intentionally small hybrid? What are the consequences for CI? *Answered for S1 and S2 (D15, D20):* kind's Go library plus client-go. Helm is untested until a profile needs it.
+5. **Manifests and resource inventory:** How does KubeHarness track ownership and rollback after partially successful apply? *Answered (D16):* the inventory is the owned cluster; nothing inside it is tracked, because the cluster is deleted.
+6. **Endpoint resolution:** Port forwarding, Kind port mappings, in-cluster probe, or combinations based on traffic origin? How are port races handled? *Answered for host traffic (D20):* client-go port-forward on loopback, holding its listener. In-cluster probes remain open for S5.
+7. **Readiness abstraction:** Which stock observations are necessary for S1/S2, and how are application-defined usability checks expressed? *Answered for S2:* `WaitReady` follows `kubectl rollout status`; application usability is the Deployment's readinessProbe.
 8. **Diagnostics:** What is mandatory vs optional on failure, and which formats/size limits/redaction rules apply?
-9. **Version compatibility:** Which tested Kubernetes/Kind/Envoy versions should be the first release matrix? What is the upgrade policy?
+9. **Version compatibility:** Which tested Kubernetes/Kind/Envoy versions should be the first release matrix? What is the upgrade policy? *Answered for S1 and S2:* kind v0.33.0 with its default Kubernetes v1.37.0 node image, client-go v0.37.2, Go 1.27.3.
 10. **Profile representation:** Start with hardcoded typed Go implementations or declarative recipes? How to avoid a premature general plugin system?
 11. **Experiment oracle ownership:** What should the harness assert versus what should remain plain Go test code?
-12. **Fixture selection:** How much of Orders/PostgreSQL, HTTP mock LLM, and MCP test server belongs in example repository assets versus the shipped library?
-13. **Result publication:** Are Go test output and CI artifacts enough for v1, or is a structured machine-readable result necessary early?
+12. **Fixture selection:** How much of Orders/PostgreSQL, HTTP mock LLM, and MCP test server belongs in example repository assets versus the shipped library? *Answered (D22):* fixtures live in example modules, not the library.
+13. **Result publication:** Are Go test output and CI artifacts enough for v1, or is a structured machine-readable result necessary early? *Answered for v1 so far:* Go test output with one report line per cluster is enough; no structured artifact yet.
 14. **v2 existing-cluster safety:** Do not design yet; record a future investigation of opt-in capability, restricted RBAC, ownership and protected cleanup.
 
 ## 13. pstack planning protocol

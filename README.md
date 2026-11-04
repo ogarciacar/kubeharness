@@ -69,8 +69,23 @@ A cleanup that fails or can't be confirmed fails the test and prints a `docker r
 
 - `go test ./...` runs the lifecycle fault matrix against a fake provider. No Docker needed.
 - `go test -tags e2e ./...` runs against real Kind (kind v0.33.0, Kubernetes v1.37.0).
-- `hack/leaks.sh` reports leftover `kh-*` clusters. It never deletes.
+- `hack/leaks.sh [pattern]` reports leftover `kh-*` clusters, or clusters matching `pattern`. It never deletes.
 - `hack/screen.sh [runs]` repeats the e2e suite and tallies pass, fail, and leaks.
+
+### Example: Orders and PostgreSQL (M01)
+
+[`examples/orders`](examples/orders) runs the M01 scenario. It loads a locally built Orders service, deploys PostgreSQL, runs a schema migration Job, posts an order, and reads the row back from PostgreSQL. A second test breaks the migration on purpose and checks that the test stops at `RunJob` with the SQL error in its output, and that the Orders Deployment was never created.
+
+The same scenario is also written without kubeharness, using kind's Go library, `kubectl`, and Go. Both versions share the assertions and both stop on a failed migration with the Job's logs, so only the setup differs. `examples/orders/compare.sh` measures both:
+
+| | kubeharness | plain kind + kubectl + Go |
+| --- | --- | --- |
+| Setup code lines | 8 | 70 |
+| Wall time, median of 5 alternating runs | 38.5s (37.0 to 39.5s) | 40.0s (38.5 to 40.6s) |
+
+The ranges overlap, so the time difference is within run-to-run variation. Creating the cluster takes about 25s of each run, measured in S1, so neither setup can save much time.
+
+Run it from `examples/orders` with Docker and `kubectl`: `go test -tags e2e ./...`.
 
 ## The problem
 

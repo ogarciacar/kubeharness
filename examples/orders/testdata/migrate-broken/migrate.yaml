@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: migrate-sql
+data:
+  schema.sql: |
+    CREATE TABLE orders (
+      id          bigserial PRIMARY KEY,
+      customer_id bigint NOT NULL REFERENCES customers (id),
+      item        text NOT NULL,
+      quantity    integer NOT NULL
+    );
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: postgres@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
+          command: [psql, -h, postgres, -U, orders, -d, orders, -v, ON_ERROR_STOP=1, -f, /sql/schema.sql]
+          env:
+            - name: PGPASSWORD
+              valueFrom: {secretKeyRef: {name: postgres, key: password}}
+          volumeMounts: [{name: sql, mountPath: /sql}]
+      volumes:
+        - name: sql
+          configMap: {name: migrate-sql}
