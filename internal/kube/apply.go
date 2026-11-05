@@ -63,41 +63,52 @@ func ReadManifests(dir string) ([]*unstructured.Unstructured, error) {
 		if err != nil {
 			return nil, err
 		}
-		dec := utilyaml.NewYAMLOrJSONDecoder(bytes.NewReader(data), 4096)
-		for i := 1; ; i++ {
-			var m map[string]any
-			if err := dec.Decode(&m); errors.Is(err, io.EOF) {
-				break
-			} else if err != nil {
-				return nil, fmt.Errorf("%s document %d: %w", f, i, err)
-			}
-			if len(m) == 0 {
-				continue
-			}
-			u := &unstructured.Unstructured{Object: m}
-			items := []*unstructured.Unstructured{u}
-			if u.IsList() {
-				list, err := u.ToList()
-				if err != nil {
-					return nil, fmt.Errorf("%s document %d: %w", f, i, err)
-				}
-				items = items[:0]
-				for j := range list.Items {
-					items = append(items, &list.Items[j])
-				}
-			}
-			for _, item := range items {
-				if item.GetKind() == "" || item.GetAPIVersion() == "" || item.GetName() == "" {
-					return nil, fmt.Errorf("%s document %d: kind, apiVersion, and metadata.name are required", f, i)
-				}
-				objs = append(objs, item)
-			}
+		fileObjs, err := DecodeManifests(f, data)
+		if err != nil {
+			return nil, err
 		}
+		objs = append(objs, fileObjs...)
 	}
 	if len(objs) == 0 {
 		return nil, fmt.Errorf("no manifests in %s", dir)
 	}
 	return objs, nil
+}
+
+// DecodeManifests parses the YAML or JSON documents in data, which came from
+// source, with the same rules as ReadManifests. It may return no objects.
+func DecodeManifests(source string, data []byte) ([]*unstructured.Unstructured, error) {
+	var objs []*unstructured.Unstructured
+	dec := utilyaml.NewYAMLOrJSONDecoder(bytes.NewReader(data), 4096)
+	for i := 1; ; i++ {
+		var m map[string]any
+		if err := dec.Decode(&m); errors.Is(err, io.EOF) {
+			return objs, nil
+		} else if err != nil {
+			return nil, fmt.Errorf("%s document %d: %w", source, i, err)
+		}
+		if len(m) == 0 {
+			continue
+		}
+		u := &unstructured.Unstructured{Object: m}
+		items := []*unstructured.Unstructured{u}
+		if u.IsList() {
+			list, err := u.ToList()
+			if err != nil {
+				return nil, fmt.Errorf("%s document %d: %w", source, i, err)
+			}
+			items = items[:0]
+			for j := range list.Items {
+				items = append(items, &list.Items[j])
+			}
+		}
+		for _, item := range items {
+			if item.GetKind() == "" || item.GetAPIVersion() == "" || item.GetName() == "" {
+				return nil, fmt.Errorf("%s document %d: kind, apiVersion, and metadata.name are required", source, i)
+			}
+			objs = append(objs, item)
+		}
+	}
 }
 
 // Apply server-side applies objs in order and returns what it applied.

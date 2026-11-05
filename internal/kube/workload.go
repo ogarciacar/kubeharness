@@ -310,3 +310,15 @@ func tail(r io.Reader, n int) []byte {
 		}
 	}
 }
+
+// DeploymentEvidence describes a Deployment for a failure message: its
+// rollout state, the conditions that explain a stuck rollout, and its Pods'
+// container states and log tails.
+func DeploymentEvidence(ctx context.Context, client kubernetes.Interface, namespace, name string) string {
+	d, err := client.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Sprintf("\n  deployment %s/%s: %v", namespace, name, err)
+	}
+	_, state := rolloutState(d)
+	return fmt.Sprintf("\n  deployment %s/%s: %s", namespace, name, state) + deploymentConditions(d) + podEvidence(ctx, client, namespace, d.Spec.Selector)
+}

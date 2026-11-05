@@ -4,7 +4,7 @@ Date: 2026-11-05
 
 ## Status
 
-Accepted. A direction for S3, not yet backed by code.
+Accepted. Enforced since S3 slice 1 by the recipe invariant tests in `internal/profile` ([29](0029-render-profile-manifests-offline-and-embed-them.md)).
 
 ## Context
 

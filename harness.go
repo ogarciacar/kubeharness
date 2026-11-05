@@ -27,6 +27,7 @@ import (
 	"github.com/ogarciacar/kubeharness/internal/kindcluster"
 	"github.com/ogarciacar/kubeharness/internal/kube"
 	"github.com/ogarciacar/kubeharness/internal/lifecycle"
+	"github.com/ogarciacar/kubeharness/internal/profile"
 )
 
 var stderr io.Writer = os.Stderr
@@ -41,6 +42,9 @@ type Harness struct {
 	rest       *rest.Config
 	client     kubernetes.Interface
 	images     imageLoader
+	env        *lifecycle.Env
+	install    func(ctx, evidence context.Context, cfg *rest.Config, client kubernetes.Interface, r *profile.Recipe) error
+	gateway    *GatewayController
 	// opsEndBy is when every operation must have finished, so evidence and
 	// cleanup still fit before go test's -timeout panic. Zero means no bound.
 	opsEndBy time.Time
@@ -129,7 +133,7 @@ func newHarness(t testing.TB, p lifecycle.Provider, ready lifecycle.ReadyFunc, t
 	if err != nil {
 		t.Fatalf("kubeharness: client for cluster %s: %v", e.Name(), err)
 	}
-	h := &Harness{t: t, name: e.Name(), kubeconfig: kubeconfig, rest: cfg, client: client}
+	h := &Harness{t: t, name: e.Name(), kubeconfig: kubeconfig, rest: cfg, client: client, env: e, install: profile.Install}
 	h.images, _ = p.(imageLoader)
 	if hasDeadline {
 		h.opsEndBy = disposeBy.Add(-evidenceTimeout)
