@@ -488,7 +488,7 @@ The **priority** of a profile is distinct from exact version numbering; do not e
 | S0 — Foundation | Small Go module, local test runner and testability seams | Fast unit tests, Docker prereq detection, documented pinned toolchain | Done (#1, #2) |
 | S1 — Owned lifecycle | Create and dispose of a Kind cluster safely | Partial failures, cancellation, double cleanup, deadline and leak tests | Done (#1) |
 | S2 — M01 vertical slice | Orders + PostgreSQL + migrations | One reproducible end-to-end test; negative migration scenario; diagnostics | Done (#3, #4), accepted |
-| S3 — Gateway API | Envoy Gateway standard profile | G01/G02/G03, resource status and data-plane evidence | Next |
+| S3 — Gateway API | Envoy Gateway standard profile | G01/G02/G03, resource status and data-plane evidence | In progress (slice plan below) |
 | S4 — Agentgateway | Kubernetes-native MCP profiles | A01/A02/A03 with deterministic tool servers and identities | Proposed |
 | S5 — Istio | East-west networking profile | I01/I02/I03 with explicit traffic-origin checks | Proposed |
 | S6 — Agent Router | Envoy AI routing profile | R01/R02/R03 with local mock providers and Redis | Proposed |
@@ -523,6 +523,32 @@ Measured with `examples/orders/setuplines` and `examples/orders/compare.sh`, on 
 The time difference is within run-to-run variation; cluster creation takes about 25s of each run. Both setups stop on a failed migration with the Job's logs. The harness cuts setup code by about nine tenths at no measurable time cost, so S2 is accepted. Its open item is the per-test cluster cost, which S3 will multiply by installing Envoy Gateway in every cluster (question 2).
 
 One acceptance example is partly met: setup, test, and cleanup outcomes are separate fields of the report line, but there is no diagnostics field. Evidence is carried in failure messages instead.
+
+### S3 slice plan
+
+The design was chosen from two independent candidates and approved before code. A test calls `h.InstallGateway(kubeharness.EnvoyGateway())` on an unchanged `New(t)`, gets a typed controller, and sends traffic with `gc.Gateway("edge").Client()`. The proxy Service is ClusterIP; the harness reads the address from Gateway status, finds the Service with that cluster IP, and port-forwards to a ready proxy Pod (D25). Profiles are data recipes with manifests rendered offline and embedded (D24). Each slice is one PR ending in a CI check.
+
+| Slice | Scope | Ends when |
+| --- | --- | --- |
+| 0 | G01 with plain kind + Helm + kubectl + Go, no library code | Passes in CI and on Docker Desktop with per-step timings |
+| 1 | `InstallGateway` with the embedded Envoy Gateway recipe and `hack/render` (Helm SDK in its own module) | Invariant unit tests; GatewayClass Accepted in e2e; a bad-image fault fails inside the install timeout with evidence |
+| 2 | The `Gateway` handle and G01 through the harness | G01 and a wrong-port negative pass; compared with slice 0 (accept/revise) |
+| 3 | `"ns/name"` references, `h.Delete`, and G02 with grant and revoke | 20-run screen with no leaks |
+| 4 | G03 under live traffic | 20-run screen; convergence time and the S3 result recorded |
+| 5 | Preload profile images, only if the numbers call for it | Cold vs cached comparison |
+| 6 | S4 entry: the agentgateway recipe | G01 to G03 pass under both profiles with no test changes |
+
+### S3 slice 0 result
+
+`examples/gateway` runs G01 the plain way. Envoy Gateway v1.9.3 with Gateway API v1.6.1 standard CRDs works on kind v0.33.0's default Kubernetes v1.37.0, outside Envoy Gateway's published 1.33 to 1.36 range; that is the tested combination until it fails. With a ClusterIP proxy Service, the Gateway's status address was the cluster IP of exactly one Service on every run, and a loopback port-forward to it carried the G01 traffic. With the default LoadBalancer type the Gateway stayed `Programmed=False` with reason `AddressNotAssigned`.
+
+Seconds per step, four runs on Docker Desktop (linux/arm64, 12 CPUs):
+
+| create | Gateway API and EG CRDs | controller ready | class accepted | backends ready | Programmed | first response | total |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 24.6 to 26.5 | 5.2 to 5.4 | 10.6 to 11.3 | 0.3 | 1.1 to 1.4 | 10.7 to 11.6 | 0.2 | 53.1 to 55.8 |
+
+Kubelet pulled `envoyproxy/gateway:v1.9.3` in 5.0 to 5.9s and the Envoy proxy image in 4.1 to 4.5s on every run. Installing the profile and reaching Programmed adds about 28s to the 25s cluster creation. Image pulls are about 10s of that, and the CRD step includes network fetches that embedded manifests remove. Neither pulls nor controller startup dominate, so S3 keeps one cluster per test and slice 5 stays gated on the slice 2 numbers.
 
 ## 11. Design risks, trade-offs and mitigations
 

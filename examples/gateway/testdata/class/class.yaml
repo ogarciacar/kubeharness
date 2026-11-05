@@ -1,0 +1,26 @@
+# Kind has no LoadBalancer, and Envoy Gateway leaves a LoadBalancer proxy
+# Service without an address, so the Gateway never becomes Programmed. A
+# ClusterIP proxy Service gets its cluster IP published in Gateway status.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: kubeharness
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        type: ClusterIP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: kubeharness
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: kubeharness
+    namespace: envoy-gateway-system
