@@ -40,6 +40,21 @@ jobs:
           go -C examples/gateway/backend test -race -count=1 ./...
           go -C examples/gateway vet ./... && go -C examples/gateway vet -tags e2e ./...
           go -C examples/gateway mod tidy -diff
+      - name: hack/render
+        run: |
+          go -C hack/render vet ./...
+          go -C hack/render mod tidy -diff
+
+  render:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: hack/render/go.mod
+      - name: rendered profile manifests match their pins
+        run: go -C hack/render run . -check
 
   e2e:
     needs: unit

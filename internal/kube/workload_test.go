@@ -407,3 +407,22 @@ func TestTailKeepsTheEndOfALongStream(t *testing.T) {
 		t.Fatalf("tail kept %d bytes ending %q", len(got), got[len(got)-25:])
 	}
 }
+
+func TestDeploymentEvidenceDescribesRolloutAndPods(t *testing.T) {
+	d := deployment(1, 1, 1, appsv1.DeploymentStatus{UpdatedReplicas: 1, Replicas: 1})
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "d-1", Namespace: "default", Labels: map[string]string{"app": "d"}},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{{
+			Name: "app", State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}},
+		}}},
+	}
+	got := DeploymentEvidence(context.Background(), fake.NewClientset(d, pod), "default", "d")
+	for _, want := range []string{"deployment default/d: 0 of 1 updated replicas available", "pod d-1 phase=Running", "container app running", "fake logs"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("evidence lacks %q:\n%s", want, got)
+		}
+	}
+	if got := DeploymentEvidence(context.Background(), fake.NewClientset(), "default", "typo"); !strings.Contains(got, "deployment default/typo: ") || !strings.Contains(got, "not found") {
+		t.Errorf("missing Deployment evidence = %q", got)
+	}
+}

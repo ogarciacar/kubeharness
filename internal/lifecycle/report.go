@@ -55,6 +55,10 @@ type Report struct {
 	CreateDuration time.Duration
 	ReadyDuration  time.Duration
 	DeleteDuration time.Duration
+	// Profile is the gateway profile installed in the cluster, if any, and
+	// InstallDuration how long its install took.
+	Profile         string
+	InstallDuration time.Duration
 }
 
 // String renders the single report line every run prints.
@@ -65,6 +69,9 @@ func (r Report) String() string {
 		r.CreateDuration.Round(100*time.Millisecond),
 		r.ReadyDuration.Round(100*time.Millisecond),
 		r.DeleteDuration.Round(10*time.Millisecond))
+	if r.Profile != "" {
+		fmt.Fprintf(&b, " profile=%s install=%s", r.Profile, r.InstallDuration.Round(100*time.Millisecond))
+	}
 	if r.SetupErr != nil {
 		fmt.Fprintf(&b, " setup_err=%q", r.SetupErr.Error())
 	}

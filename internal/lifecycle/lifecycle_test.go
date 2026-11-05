@@ -588,3 +588,40 @@ func TestNoListStartsAfterTheCleanupBudget(t *testing.T) {
 		t.Fatalf("%d List calls started after the cleanup budget ended", n)
 	}
 }
+
+func TestReportLineNamesTheProfileOnlyWhenOneWasInstalled(t *testing.T) {
+	r := Report{Cluster: "kh-1", Phase: PhaseReady, Cause: CauseOK, Cleanup: CleanupSucceeded,
+		CreateDuration: 7900 * time.Millisecond, ReadyDuration: 16800 * time.Millisecond, DeleteDuration: 460 * time.Millisecond}
+	const plain = "kubeharness cluster=kh-1 phase=ready cause=ok cleanup=succeeded remaining=0 create=7.9s ready=16.8s delete=460ms"
+	if got := r.String(); got != plain {
+		t.Fatalf("report without a profile changed:\n got %s\nwant %s", got, plain)
+	}
+	r.Profile, r.InstallDuration = "gateway-api", 21340*time.Millisecond
+	if got, want := r.String(), plain+" profile=gateway-api install=21.3s"; got != want {
+		t.Fatalf("report with a profile:\n got %s\nwant %s", got, want)
+	}
+}
+
+func TestRecordedProfileReachesTheReport(t *testing.T) {
+	e := NewEnv(lifecycletest.NewFake(), readyOK, "kc", fastTimeouts)
+	if err := e.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	e.RecordProfile("gateway-api", time.Second)
+	if r := e.Close(CauseOK); !strings.Contains(r.String(), " profile=gateway-api install=1s") {
+		t.Fatalf("report = %s", r)
+	}
+}
+
+// The deadline watchdog can Close while the test goroutine records an install.
+// Run with -race.
+func TestRecordProfileDuringAnEarlyCloseIsSafe(t *testing.T) {
+	e := NewEnv(lifecycletest.NewFake(), readyOK, "kc", fastTimeouts)
+	if err := e.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	wg.Go(func() { e.RecordProfile("gateway-api", time.Second) })
+	wg.Go(func() { e.Close(CauseDeadline) })
+	wg.Wait()
+}
