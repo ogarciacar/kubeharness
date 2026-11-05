@@ -54,6 +54,9 @@ type Env struct {
 	createDone  chan error
 
 	closeOnce sync.Once
+	// mu guards the report between a profile install on the test goroutine
+	// and an early Close from the deadline watchdog.
+	mu sync.Mutex
 }
 
 func NewEnv(p Provider, ready ReadyFunc, kubeconfigPath string, t Timeouts) *Env {
@@ -185,7 +188,18 @@ func (e *Env) Close(end Cause) Report {
 		e.report.Cleanup, e.report.CleanupErr, e.report.Remaining = e.dispose(ctx)
 		e.report.DeleteDuration = time.Since(began)
 	})
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	return e.report
+}
+
+// RecordProfile adds an installed gateway profile and its install duration
+// to the report.
+func (e *Env) RecordProfile(name string, took time.Duration) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.report.Profile = name
+	e.report.InstallDuration = took
 }
 
 // dispose deletes until a listing taken after Create returned no longer shows
