@@ -50,6 +50,10 @@ These are the **agreed direction** from concept discussions. Detailed contracts 
 | D20 | Server-side apply through client-go, and host access through client-go port-forward on loopback only | Decided (S2) | No `kubectl` dependency and no `New` options. Traffic origin is host to API server to one Pod, which proves the app, not a Service, Gateway, or mesh path |
 | D21 | The library loads locally built images and never builds or pulls them | Decided (S2) | Keeps build tooling out of the library. kubelet refuses a loaded tag that it already pulled under another name |
 | D22 | Examples live in their own Go modules next to a plain kind + kubectl + Go baseline of the same scenario | Decided (S2) | Example dependencies stay out of the library, and every slice keeps a rerunnable effort and time comparison (§9) |
+| D23 | kgateway was considered and rejected as the `gateway-api` controller; Envoy Gateway stays (D06) | Agreed | Since kgateway 2.3.0 the agentgateway control plane lives in the agentgateway repo, so kgateway gives `gateway-agentgateway` nothing. Agent Router extends Envoy Gateway (D08), so P0 is the base P2 builds on. G01 to G03 use only standard Gateway API resources |
+| D24 | The harness installs the Gateway API CRDs as their own pinned layer before any controller, never through a controller chart | Agreed direction (S3) | Controllers pin different Gateway API versions (agentgateway v1.0 needs 1.5.0). The CRD version belongs to the profile's version matrix (D14), not to whichever chart ran |
+| D25 | Gateway traffic resolves its address from the `Gateway` resource's status, and gateway experiments take their `GatewayClass` from the profile | Agreed direction (S3) | Keeps controller Service names and namespaces out of the public API, so G01 to G03 can rerun unchanged under `gateway-agentgateway` as a check that the profile design holds |
+| D26 | `gateway-agentgateway` installs agentgateway's own controller (v1.0 or later, `controllerName` `agentgateway.dev/agentgateway`, charts under `cr.agentgateway.dev/charts`) | Agreed direction (S4) | Agentgateway on Kubernetes 2.2 and earlier ran on the kgateway control plane under `kgateway.dev/agentgateway`; docs and examples from that line do not apply |
 
 **Clarification:** The Kubernetes **Gateway API is an API specification**, not a built-in gateway data plane. Using a “native Gateway API” does not remove the need for a controller/proxy. Envoy Gateway is the initial default implementation.
 
@@ -320,7 +324,7 @@ For v1, the simplest implementation may be **statically registered profiles** ra
 
 ### Version requirements to verify at implementation time
 
-As of this document's review, Agent Router documents a minimum **Kubernetes 1.32** and **Envoy Gateway 1.9.2** for its Kubernetes deployment. Agentgateway's current Kubernetes docs describe its own controller and Gateway API/Agentgateway resources. **Do not inherit kubecheck's pinned Kubernetes 1.30.10**. Recheck all version minimums when each profile is implemented and pin an exact tested combination; documentation versions can change.
+As of this document's review, Agent Router documents a minimum **Kubernetes 1.32** and **Envoy Gateway 1.9.2** for its Kubernetes deployment. Agentgateway v1.0 ships its own Kubernetes controller, separate from kgateway, and depends on Gateway API 1.5.0 (D26). **Do not inherit kubecheck's pinned Kubernetes 1.30.10**. Recheck all version minimums when each profile is implemented and pin an exact tested combination; documentation versions can change.
 
 ### Kubernetes services and data dependencies
 
@@ -542,7 +546,7 @@ These are deliberately **not** resolved by this concept. Prefer narrow decisions
 1. **Public Go lifecycle API:** Should `New(t)` register cleanup immediately, return a resource handle with explicit `Close`, or both? How are errors surfaced without hiding `testing.T` failures? *Answered (D16):* `New(t)` registers cleanup immediately and has no explicit `Close`; setup failures call `t.Fatalf`, cleanup failures call `t.Errorf`.
 2. **Execution ownership:** Is one cluster created per test, per package, or per suite? What is the default and what is opt-in? *Partly answered (D16):* one cluster per test is the default. A package-level cluster is open and is the main cost question for S3.
 3. **Contexts:** How are run, setup, per-operation, evidence and cleanup deadlines separated? How do late watchers or tasks terminate? *Answered (D18):* setup and operations share a deadline of `-timeout` minus cleanup and margin, evidence gets its own 10s, cleanup its own budget, and calls that ignore contexts are abandoned and reported.
-4. **Installation:** Use Kubernetes `client-go`, Helm SDK, external commands, or an intentionally small hybrid? What are the consequences for CI? *Answered for S1 and S2 (D15, D20):* kind's Go library plus client-go. Helm is untested until a profile needs it.
+4. **Installation:** Use Kubernetes `client-go`, Helm SDK, external commands, or an intentionally small hybrid? What are the consequences for CI? *Answered for S1 and S2 (D15, D20):* kind's Go library plus client-go. Helm is untested until a profile needs it. S3 is the first profile that needs it; Envoy Gateway and agentgateway both publish OCI Helm charts, so the S3 choice must install either.
 5. **Manifests and resource inventory:** How does KubeHarness track ownership and rollback after partially successful apply? *Answered (D16):* the inventory is the owned cluster; nothing inside it is tracked, because the cluster is deleted.
 6. **Endpoint resolution:** Port forwarding, Kind port mappings, in-cluster probe, or combinations based on traffic origin? How are port races handled? *Answered for host traffic (D20):* client-go port-forward on loopback, holding its listener. In-cluster probes remain open for S5.
 7. **Readiness abstraction:** Which stock observations are necessary for S1/S2, and how are application-defined usability checks expressed? *Answered for S2:* `WaitReady` follows `kubectl rollout status`; application usability is the Deployment's readinessProbe.
@@ -617,6 +621,13 @@ The following links are **upstream inspirations**, not code copied into KubeHarn
 - [OpenAPI-to-MCP example](https://github.com/agentgateway/agentgateway/blob/main/examples/mcp-openapi/README.md)
 - [Per-key rate limiting example](https://github.com/agentgateway/agentgateway/blob/main/examples/llm-keyed-rate-limit/README.md)
 - [Fault injection example](https://github.com/agentgateway/agentgateway/blob/main/examples/fault-injection/README.md)
+- [agentgateway v1.0.0 announcement](https://agentgateway.dev/blog/2026-03-12-agentgateway-v1.0/): controller moves out of kgateway; images and charts under `cr.agentgateway.dev`
+- [Agentgateway 2.2.x release notes](https://agentgateway.dev/docs/kubernetes/2.2.x/reference/release-notes/): last release on the kgateway control plane; `controllerName` change
+
+### kgateway (considered, not adopted; D23)
+
+- [kgateway](https://kgateway.dev/)
+- [kgateway repository](https://github.com/kgateway-dev/kgateway): README notes the agentgateway control plane migration in 2.3.0
 
 ### Agent Router (formerly Envoy AI Gateway)
 
