@@ -81,10 +81,16 @@ type Deployment struct{ Namespace, Name string }
 // Layers are the manifests Install applies, in this order. Gateway API CRDs
 // are their own layer, never part of a controller chart (D24).
 type Layers struct {
-	GatewayAPICRDs []byte
-	ControllerCRDs []byte
-	Controller     []byte
-	Class          []byte
+	GatewayAPICRDs Layer
+	ControllerCRDs Layer
+	Controller     Layer
+	Class          Layer
+}
+
+// Layer is one embedded manifest file. Path is relative to manifests/.
+type Layer struct {
+	Path string
+	YAML []byte
 }
 
 //go:embed manifests
@@ -106,19 +112,19 @@ func recipe(name, controllerName string, controllers []Deployment, p Pins) func(
 			ControllerName: controllerName,
 			Controllers:    controllers,
 			Layers: Layers{
-				GatewayAPICRDs: mustRead(p.GatewayAPI.Path()),
-				ControllerCRDs: mustRead(p.ControllerCRDs.Path),
-				Controller:     mustRead(p.Controller.Path),
-				Class:          mustRead(p.Class),
+				GatewayAPICRDs: embedded(p.GatewayAPI.Path()),
+				ControllerCRDs: embedded(p.ControllerCRDs.Path),
+				Controller:     embedded(p.Controller.Path),
+				Class:          embedded(p.Class),
 			},
 		}
 	})
 }
 
-func mustRead(path string) []byte {
+func embedded(path string) Layer {
 	b, err := manifests.ReadFile("manifests/" + path)
 	if err != nil {
 		panic(fmt.Sprintf("profile: embedded layer %s: %v; render it with: go -C hack/render run .", path, err))
 	}
-	return b
+	return Layer{Path: path, YAML: b}
 }

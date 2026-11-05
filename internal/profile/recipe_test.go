@@ -14,28 +14,19 @@ import (
 
 const gatewayAPIGroup = "gateway.networking.k8s.io"
 
-type layer struct {
-	name string
-	yaml []byte
+func layersOf(r *Recipe) []Layer {
+	l := r.Layers
+	return []Layer{l.GatewayAPICRDs, l.ControllerCRDs, l.Controller, l.Class}
 }
 
-func layersOf(r *Recipe) []layer {
-	return []layer{
-		{"gateway-api CRDs", r.Layers.GatewayAPICRDs},
-		{"controller CRDs", r.Layers.ControllerCRDs},
-		{"controller", r.Layers.Controller},
-		{"class", r.Layers.Class},
-	}
-}
-
-func decode(t *testing.T, l layer) []*unstructured.Unstructured {
+func decode(t *testing.T, l Layer) []*unstructured.Unstructured {
 	t.Helper()
-	objs, err := kube.DecodeManifests(l.name, l.yaml)
+	objs, err := kube.DecodeManifests(l.Path, l.YAML)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(objs) == 0 {
-		t.Fatalf("layer %s is empty", l.name)
+		t.Fatalf("layer %s is empty", l.Path)
 	}
 	return objs
 }
@@ -70,7 +61,7 @@ func TestGatewayAPICRDsComeOnlyFromTheirOwnLayer(t *testing.T) {
 			for _, o := range decode(t, l) {
 				group, _, _ := unstructured.NestedString(o.Object, "spec", "group")
 				if isCRD(o) && group == gatewayAPIGroup {
-					t.Errorf("layer %s ships Gateway API CRD %s", l.name, o.GetName())
+					t.Errorf("layer %s ships Gateway API CRD %s", l.Path, o.GetName())
 				}
 			}
 		}
@@ -82,7 +73,7 @@ func TestOnlyCRDLayersHoldCRDs(t *testing.T) {
 		for _, l := range layersOf(r)[2:] {
 			for _, o := range decode(t, l) {
 				if isCRD(o) {
-					t.Errorf("layer %s holds CRD %s, which Install would not wait to be established", l.name, o.GetName())
+					t.Errorf("layer %s holds CRD %s, which Install would not wait to be established", l.Path, o.GetName())
 				}
 			}
 		}
@@ -121,7 +112,7 @@ func TestImagesInTheLayersAreExactlyThePinnedImages(t *testing.T) {
 	forEachRecipe(t, func(t *testing.T, r *Recipe) {
 		var used []string
 		for _, l := range layersOf(r) {
-			for _, m := range imageLine.FindAllSubmatch(l.yaml, -1) {
+			for _, m := range imageLine.FindAllSubmatch(l.YAML, -1) {
 				used = append(used, string(m[1]))
 			}
 		}
