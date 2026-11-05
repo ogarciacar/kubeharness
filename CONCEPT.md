@@ -26,7 +26,7 @@ The larger opportunity is moving from **cluster provisioner** to **behavior-orie
 
 These are the **agreed direction** from concept discussions. Detailed contracts remain subject to pstack design review and implementation evidence.
 
-Each decision has an Architecture Decision Record in [`docs/adr/`](docs/adr/) ([D27](docs/adr/0027-record-architecture-decisions.md)). This table is the index.
+Each decision has an Architecture Decision Record in `docs/adr/` ([D27](docs/adr/0027-record-architecture-decisions.md)). This table is the index. [docs/adr/README.md](docs/adr/README.md) explains how to add or supersede a decision.
 
 | ID | Decision | Status |
 | --- | --- | --- |
