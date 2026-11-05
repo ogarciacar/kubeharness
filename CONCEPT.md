@@ -26,30 +26,37 @@ The larger opportunity is moving from **cluster provisioner** to **behavior-orie
 
 These are the **agreed direction** from concept discussions. Detailed contracts remain subject to pstack design review and implementation evidence.
 
-| ID | Decision | Status | Rationale |
-| --- | --- | --- | --- |
-| D01 | Begin in the independent `ogarciacar/kubeharness` repository | Agreed | No legacy module migration or API compatibility burden |
-| D02 | Go-first library using standard `testing.T` workflows | Agreed direction | Meet developers where integration tests already run |
-| D03 | KubeHarness provisions and **owns ephemeral Kind clusters** in v1.x | Agreed | Reliable isolation and cleanup; repeatable local/CI execution |
-| D04 | **No tests against existing staging clusters in v1.x** | Explicitly deferred to **v2.0.0** | Avoid premature RBAC, ownership, mutation safety, and shared-state complexity |
-| D05 | **Kubernetes Gateway API** is the default gateway resource model | Agreed | Portable, standard resources where possible |
-| D06 | **Envoy Gateway** is the default Gateway API controller | Agreed | Concrete reference implementation for v1 gateway experiments |
-| D07 | Agentgateway gets its **own optional controller profile**; do not automatically install Envoy Gateway beside it | Agreed | Avoid redundant controllers and unintended topology |
-| D08 | Agent Router profile **extends Envoy Gateway** | Agreed | Match actual Agent Router deployment architecture |
-| D09 | Profile priority: `minimal`, `gateway-api` P0; `gateway-agentgateway` P1; `mesh-istio` and `gateway-agent-router` P2 | Agreed roadmap priority | Prove baseline then Gateway API extensibility and agentic traffic |
-| D10 | Actual dependencies and deterministic local mocks, not live paid LLM APIs, for reference tests | Agreed direction | Reproducibility and zero provider credential dependency |
-| D11 | Tests verify both **controller/resource state** and **data-plane behavior** | Agreed direction | A reconciled manifest alone is not a behavioral success |
-| D12 | Cleanup, diagnostics, cancellation and failure preservation are core, not afterthoughts | Agreed direction | The tool's value depends on infrastructure ownership |
-| D13 | Only an initial, appropriately scoped **Go library** is assumed; CLI, YAML schema and plug-in SDK are *not* committed | Open design | Avoid building an unused configuration language or second product |
-| D14 | Explicit profile version compatibility and pinned test images/dependencies | Agreed direction | Avoid nondeterministic upstream drift |
-| D15 | Drive Kind through its Go library, not the `kind` CLI | Decided (S1) | Docker is the only prerequisite. kind's `Create` can block forever, so the harness stops waiting at its deadline instead of interrupting it |
-| D16 | One owned cluster per test, created by `New(t)` and deleted in `t.Cleanup`. Methods must be called from the test that created the `Harness` | Decided (S1, S2) | Simplest correct isolation. A cluster shared by a package's tests is still open (question 2). Taking `t` in every method would allow subtests |
-| D17 | Docker picks the API server port (kind `apiServerPort: -1`) | Decided (S1) | kind's default probes a free port, releases it, then reuses it, which races between parallel clusters |
-| D18 | Setup and every operation end by `-timeout` minus the cleanup budget and a 5s margin. A watchdog disposes of the cluster early if the test body overruns | Decided (S1, S2) | `go test`'s `-timeout` panic skips cleanups, so everything must finish before it |
-| D19 | Cleanup is `succeeded` only from a listing taken after `Create` returned; `failed` only from a listing after the latest Delete that still shows the cluster; otherwise `uncertain`. `failed` and `uncertain` fail the test with a Docker-only remove command | Decided (S1) | A report that says `succeeded` must be true, and kind's `Delete` can remove nodes and still return an error |
-| D20 | Server-side apply through client-go, and host access through client-go port-forward on loopback only | Decided (S2) | No `kubectl` dependency and no `New` options. Traffic origin is host to API server to one Pod, which proves the app, not a Service, Gateway, or mesh path |
-| D21 | The library loads locally built images and never builds or pulls them | Decided (S2) | Keeps build tooling out of the library. kubelet refuses a loaded tag that it already pulled under another name |
-| D22 | Examples live in their own Go modules next to a plain kind + kubectl + Go baseline of the same scenario | Decided (S2) | Example dependencies stay out of the library, and every slice keeps a rerunnable effort and time comparison (§9) |
+Each decision has an Architecture Decision Record in `docs/adr/` ([D27](docs/adr/0027-record-architecture-decisions.md)). This table is the index. [docs/adr/README.md](docs/adr/README.md) explains how to add or supersede a decision.
+
+| ID | Decision | Status |
+| --- | --- | --- |
+| [D01](docs/adr/0001-start-in-an-independent-repository.md) | Begin in the independent `ogarciacar/kubeharness` repository | Accepted |
+| [D02](docs/adr/0002-go-library-on-standard-testing-t.md) | Go-first library using standard `testing.T` workflows | Accepted |
+| [D03](docs/adr/0003-own-ephemeral-kind-clusters.md) | KubeHarness provisions and **owns ephemeral Kind clusters** in v1.x | Accepted |
+| [D04](docs/adr/0004-defer-existing-clusters-to-v2-0-0.md) | **No tests against existing staging clusters in v1.x** | Accepted |
+| [D05](docs/adr/0005-gateway-api-as-the-gateway-resource-model.md) | **Kubernetes Gateway API** is the default gateway resource model | Accepted |
+| [D06](docs/adr/0006-envoy-gateway-as-the-default-gateway-api-controller.md) | **Envoy Gateway** is the default Gateway API controller | Accepted |
+| [D07](docs/adr/0007-agentgateway-gets-its-own-profile.md) | Agentgateway gets its **own optional controller profile**; do not automatically install Envoy Gateway beside it | Accepted |
+| [D08](docs/adr/0008-agent-router-extends-envoy-gateway.md) | Agent Router profile **extends Envoy Gateway** | Accepted |
+| [D09](docs/adr/0009-profile-priority.md) | Profile priority: `minimal`, `gateway-api` P0; `gateway-agentgateway` P1; `mesh-istio` and `gateway-agent-router` P2 | Accepted |
+| [D10](docs/adr/0010-real-dependencies-and-local-mocks.md) | Actual dependencies and deterministic local mocks, not live paid LLM APIs, for reference tests | Accepted |
+| [D11](docs/adr/0011-verify-controller-state-and-data-plane.md) | Tests verify both **controller/resource state** and **data-plane behavior** | Accepted |
+| [D12](docs/adr/0012-cleanup-and-diagnostics-are-core.md) | Cleanup, diagnostics, cancellation and failure preservation are core, not afterthoughts | Accepted |
+| [D13](docs/adr/0013-go-library-only-no-cli-or-schema.md) | Only an initial, appropriately scoped **Go library** is assumed; CLI, YAML schema and plug-in SDK are *not* committed | Proposed |
+| [D14](docs/adr/0014-pin-profile-versions.md) | Explicit profile version compatibility and pinned test images/dependencies | Accepted |
+| [D15](docs/adr/0015-drive-kind-through-its-go-library.md) | Drive Kind through its Go library, not the `kind` CLI | Accepted |
+| [D16](docs/adr/0016-one-owned-cluster-per-test.md) | One owned cluster per test, created by `New(t)` and deleted in `t.Cleanup`. Methods must be called from the test that created the `Harness` | Accepted |
+| [D17](docs/adr/0017-docker-picks-the-api-server-port.md) | Docker picks the API server port (kind `apiServerPort: -1`) | Accepted |
+| [D18](docs/adr/0018-deadlines-end-before-the-go-test-timeout.md) | Setup and every operation end by `-timeout` minus the cleanup budget and a 5s margin. A watchdog disposes of the cluster early if the test body overruns | Accepted |
+| [D19](docs/adr/0019-truthful-cleanup-reports.md) | Cleanup is `succeeded` only from a listing taken after `Create` returned; `failed` only from a listing after the latest Delete that still shows the cluster; otherwise `uncertain`. `failed` and `uncertain` fail the test with a Docker-only remove command | Accepted |
+| [D20](docs/adr/0020-server-side-apply-and-loopback-port-forward.md) | Server-side apply through client-go, and host access through client-go port-forward on loopback only | Accepted |
+| [D21](docs/adr/0021-load-local-images-never-build-or-pull.md) | The library loads locally built images and never builds or pulls them | Accepted |
+| [D22](docs/adr/0022-examples-in-their-own-modules-with-baselines.md) | Examples live in their own Go modules next to a plain kind + kubectl + Go baseline of the same scenario | Accepted |
+| [D23](docs/adr/0023-reject-kgateway-for-the-gateway-api-profile.md) | kgateway was considered and rejected as the `gateway-api` controller; Envoy Gateway stays (D06) | Accepted |
+| [D24](docs/adr/0024-install-gateway-api-crds-separately.md) | The harness installs the Gateway API CRDs as their own pinned layer before any controller, never through a controller chart | Accepted |
+| [D25](docs/adr/0025-resolve-the-gateway-address-from-gateway-status.md) | Gateway traffic resolves its address from the `Gateway` resource's status, and gateway experiments take their `GatewayClass` from the profile | Accepted |
+| [D26](docs/adr/0026-agentgateway-uses-its-own-controller.md) | `gateway-agentgateway` installs agentgateway's own controller (v1.0 or later, `controllerName` `agentgateway.dev/agentgateway`, charts under `cr.agentgateway.dev/charts`) | Accepted |
+| [D27](docs/adr/0027-record-architecture-decisions.md) | Record each architecture decision as an ADR in `docs/adr/`, indexed by this table | Accepted |
 
 **Clarification:** The Kubernetes **Gateway API is an API specification**, not a built-in gateway data plane. Using a “native Gateway API” does not remove the need for a controller/proxy. Envoy Gateway is the initial default implementation.
 
@@ -320,7 +327,7 @@ For v1, the simplest implementation may be **statically registered profiles** ra
 
 ### Version requirements to verify at implementation time
 
-As of this document's review, Agent Router documents a minimum **Kubernetes 1.32** and **Envoy Gateway 1.9.2** for its Kubernetes deployment. Agentgateway's current Kubernetes docs describe its own controller and Gateway API/Agentgateway resources. **Do not inherit kubecheck's pinned Kubernetes 1.30.10**. Recheck all version minimums when each profile is implemented and pin an exact tested combination; documentation versions can change.
+As of this document's review, Agent Router documents a minimum **Kubernetes 1.32** and **Envoy Gateway 1.9.2** for its Kubernetes deployment. Agentgateway v1.0 ships its own Kubernetes controller, separate from kgateway, and depends on Gateway API 1.5.0 (D26). **Do not inherit kubecheck's pinned Kubernetes 1.30.10**. Recheck all version minimums when each profile is implemented and pin an exact tested combination; documentation versions can change.
 
 ### Kubernetes services and data dependencies
 
@@ -537,12 +544,12 @@ One acceptance example is partly met: setup, test, and cleanup outcomes are sepa
 
 ## 12. Open questions for pstack planning
 
-These are deliberately **not** resolved by this concept. Prefer narrow decisions tied to the next executable slice. Questions answered by S1 and S2 point to their decision (D15 to D22); the rest stay open.
+These are deliberately **not** resolved by this concept. Prefer narrow decisions tied to the next executable slice. Questions answered by S1 and S2 point to their decision record (D15 to D22); the rest stay open.
 
 1. **Public Go lifecycle API:** Should `New(t)` register cleanup immediately, return a resource handle with explicit `Close`, or both? How are errors surfaced without hiding `testing.T` failures? *Answered (D16):* `New(t)` registers cleanup immediately and has no explicit `Close`; setup failures call `t.Fatalf`, cleanup failures call `t.Errorf`.
 2. **Execution ownership:** Is one cluster created per test, per package, or per suite? What is the default and what is opt-in? *Partly answered (D16):* one cluster per test is the default. A package-level cluster is open and is the main cost question for S3.
 3. **Contexts:** How are run, setup, per-operation, evidence and cleanup deadlines separated? How do late watchers or tasks terminate? *Answered (D18):* setup and operations share a deadline of `-timeout` minus cleanup and margin, evidence gets its own 10s, cleanup its own budget, and calls that ignore contexts are abandoned and reported.
-4. **Installation:** Use Kubernetes `client-go`, Helm SDK, external commands, or an intentionally small hybrid? What are the consequences for CI? *Answered for S1 and S2 (D15, D20):* kind's Go library plus client-go. Helm is untested until a profile needs it.
+4. **Installation:** Use Kubernetes `client-go`, Helm SDK, external commands, or an intentionally small hybrid? What are the consequences for CI? *Answered for S1 and S2 (D15, D20):* kind's Go library plus client-go. Helm is untested until a profile needs it. S3 is the first profile that needs it; Envoy Gateway and agentgateway both publish OCI Helm charts, so the S3 choice must install either.
 5. **Manifests and resource inventory:** How does KubeHarness track ownership and rollback after partially successful apply? *Answered (D16):* the inventory is the owned cluster; nothing inside it is tracked, because the cluster is deleted.
 6. **Endpoint resolution:** Port forwarding, Kind port mappings, in-cluster probe, or combinations based on traffic origin? How are port races handled? *Answered for host traffic (D20):* client-go port-forward on loopback, holding its listener. In-cluster probes remain open for S5.
 7. **Readiness abstraction:** Which stock observations are necessary for S1/S2, and how are application-defined usability checks expressed? *Answered for S2:* `WaitReady` follows `kubectl rollout status`; application usability is the Deployment's readinessProbe.
@@ -617,6 +624,13 @@ The following links are **upstream inspirations**, not code copied into KubeHarn
 - [OpenAPI-to-MCP example](https://github.com/agentgateway/agentgateway/blob/main/examples/mcp-openapi/README.md)
 - [Per-key rate limiting example](https://github.com/agentgateway/agentgateway/blob/main/examples/llm-keyed-rate-limit/README.md)
 - [Fault injection example](https://github.com/agentgateway/agentgateway/blob/main/examples/fault-injection/README.md)
+- [agentgateway v1.0.0 announcement](https://agentgateway.dev/blog/2026-03-12-agentgateway-v1.0/): controller moves out of kgateway; images and charts under `cr.agentgateway.dev`
+- [Agentgateway 2.2.x release notes](https://agentgateway.dev/docs/kubernetes/2.2.x/reference/release-notes/): last release on the kgateway control plane; `controllerName` change
+
+### kgateway (considered, not adopted; D23)
+
+- [kgateway](https://kgateway.dev/)
+- [kgateway repository](https://github.com/kgateway-dev/kgateway): README notes the agentgateway control plane migration in 2.3.0
 
 ### Agent Router (formerly Envoy AI Gateway)
 
