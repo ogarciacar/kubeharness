@@ -33,6 +33,13 @@ jobs:
           go -C examples/orders/service test -race -count=1 ./...
           go -C examples/orders vet ./... && go -C examples/orders vet -tags e2e ./...
           go -C examples/orders mod tidy -diff
+      - name: examples/gateway
+        run: |
+          go -C examples/gateway/backend vet ./...
+          go -C examples/gateway/backend mod tidy -diff
+          go -C examples/gateway/backend test -race -count=1 ./...
+          go -C examples/gateway vet ./... && go -C examples/gateway vet -tags e2e ./...
+          go -C examples/gateway mod tidy -diff
 
   e2e:
     needs: unit
@@ -61,3 +68,20 @@ jobs:
       - name: leaks
         if: always()
         run: hack/leaks.sh '^(kh|m01-baseline)-' 
+
+  gateway:
+    needs: unit
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v4.2.3
+      - run: go -C examples/gateway test -race -tags e2e -count=1 -timeout 25m -v ./...
+      - name: leaks
+        if: always()
+        run: hack/leaks.sh '^g01-baseline-'
