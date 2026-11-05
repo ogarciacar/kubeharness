@@ -4,7 +4,7 @@
 
 KubeHarness is a **proposed Go-native platform integration testing harness** for reproducible, isolated Kubernetes environments. It aims to let developers express application and platform expectations while the harness provisions the cluster, deploys dependencies and workloads, waits for usable readiness, executes verifications, gathers failure evidence, and cleans up.
 
-> **Status: S1 (owned cluster lifecycle) and the S2 workload methods are implemented; everything else is concept.** This repository is a clean start, not a rename or fork of [kubecheck](https://github.com/ogarciacar/kubecheck). `kubeharness.New(t)` and the five workload methods below exist today. The profiles and experiments below are design proposals, **not implemented features**. See [CONCEPT.md](CONCEPT.md) for decisions, trade-offs, candidate experiments, and planning inputs.
+> **Status: S1 (owned cluster lifecycle) and the S2 workload methods are implemented, and S3 (Gateway API) is in progress; everything else is concept.** This repository is a clean start, not a rename or fork of [kubecheck](https://github.com/ogarciacar/kubecheck). `kubeharness.New(t)`, the five workload methods, and `InstallGateway` with the Envoy Gateway profile exist today. Sending traffic through a Gateway, the other profiles, and the experiments below are design proposals, **not implemented features**. See [CONCEPT.md](CONCEPT.md) for decisions, trade-offs, candidate experiments, and planning inputs.
 
 ## Quick start (implemented today)
 
@@ -71,6 +71,25 @@ A cleanup that fails or can't be confirmed fails the test and prints a `docker r
 - `go test -tags e2e ./...` runs against real Kind (kind v0.33.0, Kubernetes v1.37.0).
 - `hack/leaks.sh [pattern]` reports leftover `kh-*` clusters, or clusters matching `pattern`. It never deletes.
 - `hack/screen.sh [runs]` repeats the e2e suite and tallies pass, fail, and leaks.
+- `go -C hack/render run .` re-renders the embedded profile manifests after a pin change in `internal/profile`; `-check` fails when they differ from a fresh render. It needs the network.
+
+### Install a gateway profile
+
+`h.InstallGateway(kubeharness.EnvoyGateway())` installs the Gateway API CRDs, Envoy Gateway, and a GatewayClass named `kubeharness`, and returns when that GatewayClass is Accepted. Name it in your Gateway manifests as `gatewayClassName: kubeharness`, or use the `kubeharness.GatewayClass` constant.
+
+```go
+h := kubeharness.New(t)
+h.InstallGateway(kubeharness.EnvoyGateway())
+h.Apply("testdata/gateway") // a Gateway and HTTPRoutes with gatewayClassName: kubeharness
+```
+
+Every version is pinned: Gateway API v1.6.1 standard channel, Envoy Gateway v1.9.3, and each image by digest. The manifests are embedded in the module, so the install needs no Helm and no network beyond the images kubelet pulls. It has 4 minutes, and on failure the test stops with the CRDs that are not established, the controller's Pod states and logs, or the GatewayClass conditions. A second call with the same profile does nothing; a different profile fails the test. The report line gains the profile and the install time:
+
+```text
+kubeharness cluster=kh-7630e8a319a4-1 phase=ready cause=ok cleanup=succeeded remaining=0 create=10.7s ready=17.4s delete=390ms profile=gateway-api install=15.7s
+```
+
+Sending requests through a Gateway from the test (`gc.Gateway("edge").Client()`) is the next slice and does not exist yet.
 
 ### Example: Orders and PostgreSQL (M01)
 
@@ -96,20 +115,27 @@ A unit test cannot prove that a real service works behind a Kubernetes Gateway, 
 ## Intended experience
 
 ```go
-// PROPOSED API SKETCH — does not compile against this repository.
+// API SKETCH. New, InstallGateway, Apply, WaitReady, and RunJob exist today.
+// The calls marked "planned" are designed (S3 slices 2 to 4) but not built.
 func TestCreateOrder(t *testing.T) {
-    h := kubeharness.New(t,
-        kubeharness.WithProfile("gateway-api"), // Envoy Gateway
-    )
+    h := kubeharness.New(t)
+    gc := h.InstallGateway(kubeharness.EnvoyGateway())
 
-    h.Deploy("testdata/postgres")
+    h.Apply("testdata/postgres")
     h.WaitReady("postgres")
     h.RunJob("testdata/migrations")
-    h.Deploy("testdata/orders")
+    h.Apply("testdata/orders") // the Orders service, a Gateway "edge", and its HTTPRoute
     h.WaitReady("orders")
 
-    response := h.Gateway().Post("/orders", orderFixture)
-    response.ExpectStatus(201)
+    gw := gc.Gateway("edge")                        // planned: Programmed, address, port-forward
+    gw.AwaitRoute("orders", kubeharness.RouteReady) // planned
+    resp, err := gw.Client().Post("http://shop.example/orders", "application/json", orderFixture) // planned
+    if err != nil {
+        t.Fatal(err)
+    }
+    if resp.StatusCode != http.StatusCreated {
+        t.Fatalf("POST /orders = %d", resp.StatusCode)
+    }
 
     // Verify persisted state.
     // Diagnostics on failure and cleanup via t.Cleanup().
