@@ -1,0 +1,42 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: shop
+  namespace: apps
+  generation: 3
+spec:
+  parentRefs:
+    - name: edge
+    - name: external
+      namespace: edge-ns
+    - group: example.com
+      kind: Gateway
+      name: foreign
+    - kind: Service
+      name: mesh
+status:
+  parents:
+    - controllerName: gateway.envoyproxy.io/gatewayclass-controller
+      parentRef:
+        name: edge
+      conditions:
+        - type: Accepted
+          status: "True"
+          reason: Accepted
+          message: Route is accepted
+          observedGeneration: 3
+        - type: ResolvedRefs
+          status: "True"
+          reason: ResolvedRefs
+          message: Resolved all the Object references for the Route
+          observedGeneration: 3
+    - controllerName: gateway.envoyproxy.io/gatewayclass-controller
+      parentRef:
+        kind: Service
+        name: mesh
+      conditions:
+        - type: Accepted
+          status: "True"
+          reason: Accepted
+          message: mesh parent
+          observedGeneration: 3

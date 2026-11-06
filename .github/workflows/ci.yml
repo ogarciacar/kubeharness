@@ -99,4 +99,4 @@ jobs:
       - run: go -C examples/gateway test -race -tags e2e -count=1 -timeout 25m -v ./...
       - name: leaks
         if: always()
-        run: hack/leaks.sh '^g01-baseline-'
+        run: hack/leaks.sh '^(kh|g01-baseline)-'

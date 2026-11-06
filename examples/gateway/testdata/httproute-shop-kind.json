@@ -1,0 +1,94 @@
+{
+    "apiVersion": "gateway.networking.k8s.io/v1",
+    "kind": "HTTPRoute",
+    "metadata": {
+        "creationTimestamp": "2026-11-06T21:10:14Z",
+        "generation": 1,
+        "name": "shop",
+        "namespace": "default",
+        "resourceVersion": "759",
+        "uid": "84405ebf-328b-49a7-a9d7-392540280560"
+    },
+    "spec": {
+        "hostnames": [
+            "shop.example"
+        ],
+        "parentRefs": [
+            {
+                "group": "gateway.networking.k8s.io",
+                "kind": "Gateway",
+                "name": "edge"
+            }
+        ],
+        "rules": [
+            {
+                "backendRefs": [
+                    {
+                        "group": "",
+                        "kind": "Service",
+                        "name": "orders",
+                        "port": 80,
+                        "weight": 1
+                    }
+                ],
+                "matches": [
+                    {
+                        "path": {
+                            "type": "PathPrefix",
+                            "value": "/orders"
+                        }
+                    }
+                ]
+            },
+            {
+                "backendRefs": [
+                    {
+                        "group": "",
+                        "kind": "Service",
+                        "name": "payments",
+                        "port": 80,
+                        "weight": 1
+                    }
+                ],
+                "matches": [
+                    {
+                        "path": {
+                            "type": "PathPrefix",
+                            "value": "/payments"
+                        }
+                    }
+                ]
+            }
+        ]
+    },
+    "status": {
+        "parents": [
+            {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2026-11-06T21:10:14Z",
+                        "message": "Route is accepted",
+                        "observedGeneration": 1,
+                        "reason": "Accepted",
+                        "status": "True",
+                        "type": "Accepted"
+                    },
+                    {
+                        "lastTransitionTime": "2026-11-06T21:10:14Z",
+                        "message": "Resolved all the Object references for the Route",
+                        "observedGeneration": 1,
+                        "reason": "ResolvedRefs",
+                        "status": "True",
+                        "type": "ResolvedRefs"
+                    }
+                ],
+                "controllerName": "gateway.envoyproxy.io/gatewayclass-controller",
+                "parentRef": {
+                    "group": "gateway.networking.k8s.io",
+                    "kind": "Gateway",
+                    "name": "edge"
+                }
+            }
+        ]
+    }
+}

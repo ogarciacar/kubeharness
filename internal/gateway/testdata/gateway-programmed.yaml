@@ -1,0 +1,51 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: edge
+  namespace: default
+  generation: 1
+spec:
+  gatewayClassName: kubeharness
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+status:
+  addresses:
+    - type: IPAddress
+      value: 10.96.12.7
+  conditions:
+    - type: Accepted
+      status: "True"
+      reason: Accepted
+      message: The Gateway has been scheduled by Envoy Gateway
+      observedGeneration: 1
+      lastTransitionTime: "2026-01-01T00:00:00Z"
+    - type: Programmed
+      status: "True"
+      reason: Programmed
+      message: Address assigned to the Gateway, 1/1 envoy replicas available
+      observedGeneration: 1
+      lastTransitionTime: "2026-01-01T00:00:00Z"
+  listeners:
+    - name: http
+      attachedRoutes: 2
+      supportedKinds:
+        - group: gateway.networking.k8s.io
+          kind: HTTPRoute
+      conditions:
+        - type: Accepted
+          status: "True"
+          reason: Accepted
+          message: Listener accepted
+          observedGeneration: 1
+        - type: Programmed
+          status: "True"
+          reason: Programmed
+          message: Listener programmed
+          observedGeneration: 1
+        - type: ResolvedRefs
+          status: "True"
+          reason: ResolvedRefs
+          message: Listener refs resolved
+          observedGeneration: 1
