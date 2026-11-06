@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	pollInterval = 500 * time.Millisecond
+	// PollInterval is how often a wait re-reads a resource that is not ready yet.
+	PollInterval = 500 * time.Millisecond
 	logTailBytes = 4096
 	logTailLines = 100
 )
@@ -104,7 +105,7 @@ func WaitDeployment(ctx, evidenceCtx context.Context, client kubernetes.Interfac
 				evidence = deploymentConditions(seen) + podEvidence(evidenceCtx, client, namespace, seen.Spec.Selector)
 			}
 			return fmt.Errorf("deployment %s not available: %w; last observed: %s%s", name, ctx.Err(), last, evidence)
-		case <-time.After(pollInterval):
+		case <-time.After(PollInterval):
 		}
 	}
 }
@@ -139,7 +140,7 @@ func WaitJob(ctx, evidenceCtx context.Context, client kubernetes.Interface, name
 				evidence = jobEvidence(evidenceCtx, client, job)
 			}
 			return fmt.Errorf("job %s did not complete: %w; last observed: %s%s", name, ctx.Err(), last, evidence)
-		case <-time.After(pollInterval):
+		case <-time.After(PollInterval):
 		}
 	}
 }
@@ -289,7 +290,7 @@ func ResetJob(ctx context.Context, client kubernetes.Interface, namespace, name 
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("earlier run of job %s still being deleted: %w", name, ctx.Err())
-		case <-time.After(pollInterval):
+		case <-time.After(PollInterval):
 		}
 	}
 }

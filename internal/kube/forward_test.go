@@ -2,7 +2,7 @@ package kube
 
 import (
 	"context"
-	"strings"
+	"errors"
 	"testing"
 	"time"
 
@@ -55,7 +55,7 @@ func TestForwardTargetsAReadyPodAndTheMappedContainerPort(t *testing.T) {
 		t.Fatalf("forwardTarget picked %s, want the ready Pod that is not terminating", pod)
 	}
 	only := echoPod("echo-c", corev1.ConditionFalse)
-	if _, _, err := forwardTarget(context.Background(), fake.NewClientset(echoService(), &only), "default", "echo", 80); err == nil || !strings.Contains(err.Error(), "no ready pod") {
+	if _, _, err := forwardTarget(context.Background(), fake.NewClientset(echoService(), &only), "default", "echo", 80); !errors.Is(err, ErrNoReadyPod) {
 		t.Fatalf("no ready pod: %v", err)
 	}
 }
@@ -69,6 +69,24 @@ func TestCloseGivesUpOnAForwarderThatNeverStops(t *testing.T) {
 	}
 	if again := f.Close(); again == nil || again.Error() != err.Error() {
 		t.Fatalf("second Close = %v, want the same error", again)
+	}
+}
+
+func TestStoppedIsFalseWhileTheForwardIsLiveAndTrueAfterClose(t *testing.T) {
+	f := &Forwarding{cancel: func() {}, done: make(chan error, 1), exited: make(chan struct{})}
+	if f.Stopped() {
+		t.Fatal("Stopped on a live forward")
+	}
+	f.done <- nil
+	close(f.exited)
+	if err := f.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if !f.Stopped() {
+		t.Fatal("Stopped after Close")
+	}
+	if !f.Stopped() {
+		t.Fatal("Stopped flipped back after the forward had ended")
 	}
 }
 

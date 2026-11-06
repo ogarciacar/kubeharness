@@ -48,7 +48,7 @@ func WaitEstablished(ctx context.Context, client dynamic.Interface, names []stri
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("%d of %d CRDs not established: %w%s", len(pending), len(names), ctx.Err(), strings.Join(pending, ""))
-		case <-time.After(pollInterval):
+		case <-time.After(PollInterval):
 		}
 	}
 }
