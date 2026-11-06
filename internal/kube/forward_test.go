@@ -72,6 +72,24 @@ func TestCloseGivesUpOnAForwarderThatNeverStops(t *testing.T) {
 	}
 }
 
+func TestStoppedIsFalseWhileTheForwardIsLiveAndTrueAfterClose(t *testing.T) {
+	f := &Forwarding{cancel: func() {}, done: make(chan error, 1), exited: make(chan struct{})}
+	if f.Stopped() {
+		t.Fatal("Stopped on a live forward")
+	}
+	f.done <- nil
+	close(f.exited)
+	if err := f.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if !f.Stopped() {
+		t.Fatal("Stopped after Close")
+	}
+	if !f.Stopped() {
+		t.Fatal("Stopped flipped back after the forward had ended")
+	}
+}
+
 func TestNamedTargetPortResolvesOnANativeSidecar(t *testing.T) {
 	always := corev1.ContainerRestartPolicyAlways
 	p := echoPod("side-1", corev1.ConditionTrue)

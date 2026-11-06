@@ -22,9 +22,11 @@ import (
 // Forwarding is a live port-forward from 127.0.0.1 to a Pod behind a Service.
 type Forwarding struct {
 	// Addr is the local address of the forwarded port, such as 127.0.0.1:53017.
-	Addr      string
-	cancel    context.CancelFunc
-	done      chan error
+	Addr   string
+	cancel context.CancelFunc
+	done   chan error
+	// exited is closed when ForwardPorts returns, for any reason.
+	exited    chan struct{}
 	closeOnce sync.Once
 	closeErr  error
 }
@@ -56,8 +58,12 @@ func StartForward(ctx context.Context, cfg *rest.Config, client kubernetes.Inter
 		cancel()
 		return nil, fmt.Errorf("port-forward to pod %s: %w", pod, err)
 	}
-	f := &Forwarding{cancel: cancel, done: make(chan error, 1)}
-	go func() { f.done <- pf.ForwardPorts() }()
+	f := &Forwarding{cancel: cancel, done: make(chan error, 1), exited: make(chan struct{})}
+	go func() {
+		err := pf.ForwardPorts()
+		f.done <- err
+		close(f.exited)
+	}()
 	select {
 	case <-ready:
 	case err := <-f.done:
@@ -93,6 +99,18 @@ func (f *Forwarding) Close() error {
 		}
 	})
 	return f.closeErr
+}
+
+// Stopped reports whether the forward has ended, without blocking. Close ends
+// it, and so does client-go giving up on the Pod. A stopped forward's listener
+// refuses connections, so a dialer replaces it before dialing.
+func (f *Forwarding) Stopped() bool {
+	select {
+	case <-f.exited:
+		return true
+	default:
+		return false
+	}
 }
 
 // forwardTarget picks a ready Pod behind the Service and the container port
