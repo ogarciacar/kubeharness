@@ -13,9 +13,6 @@ import (
 	"github.com/ogarciacar/kubeharness/internal/kube"
 )
 
-// Fixtures are the synthetic testdata StatusFor already parses. A live Kind
-// dump of G01 still has to show one matching parent before e2e waits on this.
-
 var routeTarget = Target{
 	Gateway: edge,
 	Service: kube.Ref{Namespace: "envoy-gateway-system", Name: "envoy-edge"},

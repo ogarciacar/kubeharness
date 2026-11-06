@@ -113,6 +113,9 @@ func (f *Forwarding) Stopped() bool {
 	}
 }
 
+// ErrNoReadyPod means the Service selects no ready Pod. A caller may retry it.
+var ErrNoReadyPod = errors.New("no ready pod")
+
 // forwardTarget picks a ready Pod behind the Service and the container port
 // that the Service port maps to.
 func forwardTarget(ctx context.Context, client kubernetes.Interface, namespace, service string, port int32) (string, int32, error) {
@@ -146,7 +149,7 @@ func forwardTarget(ctx context.Context, client kubernetes.Interface, namespace, 
 		}
 		return p.Name, target, nil
 	}
-	return "", 0, errors.New("service " + service + " has no ready pod")
+	return "", 0, fmt.Errorf("service %s has %w", service, ErrNoReadyPod)
 }
 
 func podReady(p corev1.Pod) bool {

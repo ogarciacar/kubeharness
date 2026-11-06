@@ -222,7 +222,7 @@ func TestRouteStatusIsWhatRouteReadyAccepts(t *testing.T) {
 }
 
 func TestAwaitRouteStopsWhenTheRouteIsMissing(t *testing.T) {
-	tb := gatewayTB(t)
+	tb := awaitStopTB(t)
 	dyn := gatewayDynamic(t, nil)
 	harnessWithInstall(tb, &fakeInstall{})(func(h *Harness) {
 		useGateway(h, dyn).AwaitRoute("shop", RouteReady)
@@ -245,7 +245,7 @@ func TestAwaitRouteStopsWhenTheRouteIsMissing(t *testing.T) {
 }
 
 func TestAwaitRouteAcceptsASettledRoute(t *testing.T) {
-	tb := gatewayTB(t)
+	tb := awaitStopTB(t)
 	dyn := gatewayDynamic(t, settledRoute(EnvoyGateway().r.ControllerName))
 	harnessWithInstall(tb, &fakeInstall{})(func(h *Harness) {
 		useGateway(h, dyn).AwaitRoute("shop", RouteReady)
@@ -256,7 +256,7 @@ func TestAwaitRouteAcceptsASettledRoute(t *testing.T) {
 }
 
 func TestAwaitRouteRejectsABadRef(t *testing.T) {
-	tb := gatewayTB(t)
+	tb := awaitStopTB(t)
 	dyn := gatewayDynamic(t, nil)
 	harnessWithInstall(tb, &fakeInstall{})(func(h *Harness) {
 		useGateway(h, dyn).AwaitRoute("default/shop/extra", RouteReady)
@@ -267,7 +267,7 @@ func TestAwaitRouteRejectsABadRef(t *testing.T) {
 }
 
 func TestAwaitResponseStopsWhenTheBodyCannotBeReplayed(t *testing.T) {
-	tb := gatewayTB(t)
+	tb := awaitStopTB(t)
 	dyn := gatewayDynamic(t, nil)
 	dialed := false
 	req, err := http.NewRequest(http.MethodPost, "http://shop.example/orders", nil)
@@ -306,7 +306,7 @@ func TestAwaitResponseStopsWhenTheBodyCannotBeReplayed(t *testing.T) {
 }
 
 func TestAwaitResponseSendsTheRequestThroughTheGateway(t *testing.T) {
-	tb := gatewayTB(t)
+	tb := awaitStopTB(t)
 	dyn := gatewayDynamic(t, nil)
 	var host string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -341,11 +341,11 @@ func TestAwaitResponseSendsTheRequestThroughTheGateway(t *testing.T) {
 	}
 }
 
-func gatewayTB(t *testing.T) *fakeTB {
+var stopFitsCleanup = evidenceTimeout + fastTimeouts.Cleanup + fastTimeouts.DeadlineMargin + 5*time.Second
+
+func awaitStopTB(t *testing.T) *fakeTB {
 	t.Helper()
-	// opsEndBy is the test deadline minus cleanup and the 10s evidence budget.
-	// 15s leaves a few seconds, so a wait that should Stop does not run for a minute.
-	return &fakeTB{dir: t.TempDir(), deadline: time.Now().Add(15 * time.Second)}
+	return &fakeTB{dir: t.TempDir(), deadline: time.Now().Add(stopFitsCleanup)}
 }
 
 func gatewayDynamic(t *testing.T, route *unstructured.Unstructured) dynamic.Interface {

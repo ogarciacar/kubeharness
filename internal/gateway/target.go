@@ -74,14 +74,13 @@ func Attach(ctx, evidenceCtx context.Context, cl Cluster, gw kube.Ref, budget ti
 // awaitTarget polls until observeTarget is Done. Only Attach calls it.
 // On failure the error carries the last reason and Evidence for gw.
 func awaitTarget(ctx, evidenceCtx context.Context, cl Cluster, gw kube.Ref) (Target, error) {
-	return Await(ctx, evidenceCtx, statusInterval, func(ctx context.Context) (Target, Verdict) {
+	return Await(ctx, evidenceCtx, kube.PollInterval, func(ctx context.Context) (Target, Verdict) {
 		return observeTarget(ctx, cl, gw)
 	}, func(ctx context.Context) string {
 		return Evidence(ctx, cl, gw, kube.Ref{})
 	})
 }
 
-// observeTarget is one poll of awaitTarget.
 func observeTarget(ctx context.Context, cl Cluster, gw kube.Ref) (Target, Verdict) {
 	if cl.Dynamic == nil {
 		return Target{}, Stop(fmt.Errorf("gateway %s: no dynamic client", gw))
@@ -143,8 +142,7 @@ func firstIPAddress(s GatewayState) (string, error) {
 // portPlan returns the ports to forward: the listener ports, each of which
 // must also be a port of the proxy Service. The Gateway API leaves the
 // Service's shape to the controller. Envoy Gateway's Service port equals the
-// listener port. This is the only place that assumption lives, so a profile
-// that maps ports differently changes this function and nothing else.
+// listener port.
 func portPlan(listeners, servicePorts []int32) ([]int32, error) {
 	if len(listeners) == 0 {
 		return nil, errors.New("gateway has no listener ports")

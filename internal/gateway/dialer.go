@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -37,17 +36,32 @@ type Dialer struct {
 	closeErr  error
 }
 
-// slot is one listener port's forward.
 type slot struct {
-	port int32
-	open opener
-	// lock is a one-token channel instead of a sync.Mutex so that waiting
-	// for a concurrent re-forward respects the waiting dial's context.
-	// It holds one token when the slot is free.
-	lock   chan struct{}
+	port   int32
+	open   opener
+	lock   *ctxLock
 	cur    forward // guarded by lock; nil only after Close
 	closed bool    // guarded by lock
 }
+
+type ctxLock struct{ token chan struct{} }
+
+func newCtxLock() *ctxLock {
+	l := &ctxLock{token: make(chan struct{}, 1)}
+	l.token <- struct{}{}
+	return l
+}
+
+func (l *ctxLock) Lock(ctx context.Context) error {
+	select {
+	case <-l.token:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (l *ctxLock) Unlock() { l.token <- struct{}{} }
 
 // forward is a live port-forward as the dialer needs it. *kube.Forwarding
 // satisfies it in production. Unit tests use a net.Listener-backed fake.
@@ -63,8 +77,8 @@ type forward interface {
 type opener func(ctx context.Context, port int32) (forward, error)
 
 // openDialer starts a forward for every Target port. Only Attach calls it.
-// A Service with no ready Pod yet is retried every statusInterval until ctx
-// ends. Pending on kube's "no ready pod" error, Stop on anything else. If
+// A Service with no ready Pod yet is retried every kube.PollInterval until ctx
+// ends. Pending on kube.ErrNoReadyPod, Stop on anything else. If
 // any port fails, the ports already forwarded are closed before it returns,
 // so a failed Attach leaves nothing running and a nil dialer. The error
 // carries Evidence for t. budget is the forwardTimeout Attach received.
@@ -112,33 +126,25 @@ func startForwards(ctx context.Context, t Target, budget time.Duration, open ope
 }
 
 func newSlot(port int32, open opener, cur forward) *slot {
-	s := &slot{port: port, open: open, lock: make(chan struct{}, 1), cur: cur}
-	s.lock <- struct{}{}
-	return s
+	return &slot{port: port, open: open, lock: newCtxLock(), cur: cur}
 }
 
-// openPort tries the opener until it returns a forward, the error is not a
-// missing ready Pod, or ctx ends. One attempt per statusInterval.
+// openPort tries the opener until it returns a forward, the error is not
+// kube.ErrNoReadyPod, or ctx ends. One attempt per kube.PollInterval.
 func openPort(ctx context.Context, open opener, port int32) (forward, error) {
-	return Await(ctx, context.Background(), statusInterval, func(ctx context.Context) (forward, Verdict) {
+	return Await(ctx, context.Background(), kube.PollInterval, func(ctx context.Context) (forward, Verdict) {
 		f, err := open(ctx, port)
 		if err != nil {
 			if f != nil {
 				_ = f.Close()
 			}
-			if noReadyPod(err) {
+			if errors.Is(err, kube.ErrNoReadyPod) {
 				return nil, Pending("%s", err.Error())
 			}
 			return nil, Stop(err)
 		}
 		return f, Done()
 	}, nil)
-}
-
-// noReadyPod reports kube.StartForward's missing-Pod error. That error is not
-// a sentinel. The phrase is the whole signal, and it is retryable.
-func noReadyPod(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "no ready pod")
 }
 
 // DialContext connects to the forward for addr's port. The host is ignored.
@@ -196,10 +202,10 @@ func connectionRefused(err error) bool {
 }
 
 func (s *slot) current(ctx context.Context) (forward, error) {
-	if err := acquire(ctx, s.lock); err != nil {
+	if err := s.lock.Lock(ctx); err != nil {
 		return nil, err
 	}
-	defer release(s.lock)
+	defer s.lock.Unlock()
 	if s.closed || s.cur == nil {
 		return nil, ErrClosed
 	}
@@ -214,10 +220,10 @@ func (s *slot) current(ctx context.Context) (forward, error) {
 // If it gives up, the slot keeps the stopped forward, so the next dial sees
 // Stopped and tries again.
 func (s *slot) replace(ctx context.Context, d *Dialer, failed forward) (forward, error) {
-	if err := acquire(ctx, s.lock); err != nil {
+	if err := s.lock.Lock(ctx); err != nil {
 		return nil, err
 	}
-	defer release(s.lock)
+	defer s.lock.Unlock()
 	if s.closed || s.cur == nil {
 		return nil, ErrClosed
 	}
@@ -225,7 +231,7 @@ func (s *slot) replace(ctx context.Context, d *Dialer, failed forward) (forward,
 		return s.cur, nil
 	}
 	_ = failed.Close()
-	openCtx, cancel := bound(ctx, d.stop, d.budget)
+	openCtx, cancel := withStopAndBudget(ctx, d.stop, d.budget)
 	defer cancel()
 	f, err := openPort(openCtx, s.open, s.port)
 	if err != nil {
@@ -235,8 +241,7 @@ func (s *slot) replace(ctx context.Context, d *Dialer, failed forward) (forward,
 	return f, nil
 }
 
-// bound is ctx and stop, whichever ends first, capped at budget.
-func bound(ctx, stop context.Context, budget time.Duration) (context.Context, context.CancelFunc) {
+func withStopAndBudget(ctx, stop context.Context, budget time.Duration) (context.Context, context.CancelFunc) {
 	merged, cancelMerge := mergeCancel(ctx, stop)
 	limited, cancelLimit := context.WithTimeout(merged, budget)
 	return limited, func() {
@@ -254,17 +259,6 @@ func mergeCancel(parent, other context.Context) (context.Context, context.Cancel
 	}
 }
 
-func acquire(ctx context.Context, token chan struct{}) error {
-	select {
-	case <-token:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-}
-
-func release(token chan struct{}) { token <- struct{}{} }
-
 // Close stops every forward and makes later dials fail with ErrClosed. It
 // cancels re-forwards in flight first, so it waits only for the opener to
 // notice, not for budget. It is safe to call more than once. Later calls
@@ -275,7 +269,7 @@ func (d *Dialer) Close() error {
 		var errs []error
 		for _, port := range d.ports {
 			s := d.slots[port]
-			<-s.lock
+			_ = s.lock.Lock(context.Background())
 			s.closed = true
 			if s.cur != nil {
 				if err := s.cur.Close(); err != nil {
@@ -283,7 +277,7 @@ func (d *Dialer) Close() error {
 				}
 				s.cur = nil
 			}
-			s.lock <- struct{}{}
+			s.lock.Unlock()
 		}
 		d.closeErr = errors.Join(errs...)
 	})
@@ -316,7 +310,6 @@ func Transport(d *Dialer) *http.Transport {
 
 var _ forward = forwardingAdapter{}
 
-// forwardingAdapter adapts *kube.Forwarding, whose address is a field.
 type forwardingAdapter struct{ *kube.Forwarding }
 
 func (f forwardingAdapter) Address() string { return f.Addr }

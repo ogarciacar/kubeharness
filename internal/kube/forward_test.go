@@ -2,7 +2,7 @@ package kube
 
 import (
 	"context"
-	"strings"
+	"errors"
 	"testing"
 	"time"
 
@@ -55,7 +55,7 @@ func TestForwardTargetsAReadyPodAndTheMappedContainerPort(t *testing.T) {
 		t.Fatalf("forwardTarget picked %s, want the ready Pod that is not terminating", pod)
 	}
 	only := echoPod("echo-c", corev1.ConditionFalse)
-	if _, _, err := forwardTarget(context.Background(), fake.NewClientset(echoService(), &only), "default", "echo", 80); err == nil || !strings.Contains(err.Error(), "no ready pod") {
+	if _, _, err := forwardTarget(context.Background(), fake.NewClientset(echoService(), &only), "default", "echo", 80); !errors.Is(err, ErrNoReadyPod) {
 		t.Fatalf("no ready pod: %v", err)
 	}
 }

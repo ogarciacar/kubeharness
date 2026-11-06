@@ -274,7 +274,7 @@ func TestOpenPortRetriesAMissingPodAndStopsOnOtherErrors(t *testing.T) {
 	var opens atomic.Int32
 	f, err := openPort(ctx, func(context.Context, int32) (forward, error) {
 		if opens.Add(1) < 3 {
-			return nil, errors.New("service envoy has no ready pod")
+			return nil, kube.ErrNoReadyPod
 		}
 		return mustListen(t), nil
 	}, 80)

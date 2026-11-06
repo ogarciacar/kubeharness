@@ -33,9 +33,6 @@ func Stop(err error) Verdict { return Verdict{stop: err} }
 // observed before ctx ended. A reason caused by ctx's own cancellation does
 // not replace that earlier reason. The error then includes
 // evidence(evidenceCtx) when evidence is non-nil.
-//
-// Await is the only poll loop in this package. Gateway, route, forward, and
-// response waits differ only in observe.
 func Await[T any](ctx, evidenceCtx context.Context, interval time.Duration, observe func(context.Context) (T, Verdict), evidence func(context.Context) string) (T, error) {
 	var zero T
 	var last string
@@ -78,7 +75,4 @@ func withEvidence(err error, ctx context.Context, evidence func(context.Context)
 	return fmt.Errorf("%w\n%s", err, text)
 }
 
-const (
-	statusInterval   = 500 * time.Millisecond // matches kube's pollInterval
-	responseInterval = 250 * time.Millisecond
-)
+const responseInterval = 250 * time.Millisecond

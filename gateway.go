@@ -14,12 +14,8 @@ import (
 	"github.com/ogarciacar/kubeharness/internal/profile"
 )
 
-// gatewayTimeout covers the first proxy Pod's image pull, which happens on
-// the first Gateway, so it matches readyTimeout.
 const gatewayTimeout = readyTimeout
 
-// routeTimeout and responseTimeout cover control-plane and xDS propagation.
-// Those take seconds. A long limit only hides bugs.
 const (
 	routeTimeout    = time.Minute
 	responseTimeout = time.Minute
@@ -54,11 +50,8 @@ func (p GatewayProfile) Name() string {
 // GatewayController is the gateway controller that InstallGateway put in a
 // Harness's cluster. It is ready to serve Gateways of class GatewayClass.
 type GatewayController struct {
-	h *Harness
-	r *profile.Recipe
-	// cl is built once by InstallGateway from the Harness's clients and the
-	// recipe's controller facts, so every Gateway shares the same view of the
-	// cluster.
+	h  *Harness
+	r  *profile.Recipe
 	cl gateway.Cluster
 }
 
@@ -145,11 +138,8 @@ func (c *GatewayController) Gateway(ref string) *Gateway {
 // address, the Service behind it, and loopback port-forwards to that
 // Service's Pods. Get one from GatewayController.Gateway.
 type Gateway struct {
-	c      *GatewayController
-	target gateway.Target
-	// transport is shared by every Client and by AwaitResponse, so they share
-	// connections and the dialer's forwards. Timeout set on a client applies
-	// only to that client.
+	c         *GatewayController
+	target    gateway.Target
 	transport *http.Transport
 }
 
@@ -217,9 +207,7 @@ type RouteStatus struct {
 	// ResolvedRefs says whether every backendRef resolved, for example False
 	// with reason RefNotPermitted or BackendNotFound.
 	ResolvedRefs Condition
-	// fromWait is true only on a value routeStatus built after StatusFor
-	// accepted the parent. Callers cannot set it.
-	fromWait bool
+	fromWait     bool
 }
 
 // Condition is one status condition. Status is "True", "False", "Unknown",
@@ -256,9 +244,6 @@ func RouteReady(s RouteStatus) error {
 	return errors.New(strings.Join(bad, "; "))
 }
 
-// routeStatus is the one place internal conditions become the public type,
-// and the only place fromWait is set. A condition the controller did not
-// write becomes the zero Condition.
 func routeStatus(cs gateway.Conditions) RouteStatus {
 	pick := func(t string) Condition {
 		c, _ := cs.Get(t)
@@ -267,8 +252,6 @@ func routeStatus(cs gateway.Conditions) RouteStatus {
 	return RouteStatus{Accepted: pick("Accepted"), ResolvedRefs: pick("ResolvedRefs"), fromWait: true}
 }
 
-// ref parses "[namespace/]name" for a method's argument and fails the test
-// on a malformed one, naming kind ("gateway", "route") in the message.
 func (h *Harness) ref(kind, s string) kube.Ref {
 	h.t.Helper()
 	r, err := kube.ParseRef(s, kube.DefaultNamespace)
@@ -278,8 +261,6 @@ func (h *Harness) ref(kind, s string) kube.Ref {
 	return r
 }
 
-// controllerRefs converts the recipe's controller Deployments to refs, once,
-// in InstallGateway.
 func controllerRefs(ds []profile.Deployment) []kube.Ref {
 	out := make([]kube.Ref, len(ds))
 	for i, d := range ds {

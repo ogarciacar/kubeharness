@@ -78,8 +78,6 @@ func assertRouting(t *testing.T, client *http.Client) {
 
 var profiles = []kubeharness.GatewayProfile{kubeharness.EnvoyGateway()}
 
-// setupWithHarness is the G01 setup with kubeharness. setuplines counts it
-// against setupBaseline.
 func setupWithHarness(t *testing.T, p kubeharness.GatewayProfile) (*kubeharness.Harness, *kubeharness.Gateway) {
 	h := kubeharness.New(t)
 	gc := h.InstallGateway(p)
@@ -91,9 +89,6 @@ func setupWithHarness(t *testing.T, p kubeharness.GatewayProfile) (*kubeharness.
 	gw := gc.Gateway("edge")
 	gw.AwaitRoute("shop", kubeharness.RouteReady)
 	gw.AwaitRoute("payments", kubeharness.RouteReady)
-	// Route status says the controller accepted the route. The proxy may
-	// still be applying that configuration, and assertRouting sends each
-	// request once, so the data plane has to answer first.
 	gw.AwaitResponse(get("http://shop.example/orders"), servedBy("orders"))
 	return h, gw
 }
@@ -125,8 +120,6 @@ func setupWrongPort(t *testing.T, p kubeharness.GatewayProfile) *kubeharness.Gat
 	return gw
 }
 
-// TestG01WrongBackendPort checks that a closed Service targetPort leaves the
-// route ready and that the response did not come from the backend.
 func TestG01WrongBackendPort(t *testing.T) {
 	for _, p := range profiles {
 		t.Run(p.Name(), func(t *testing.T) {
@@ -136,9 +129,6 @@ func TestG01WrongBackendPort(t *testing.T) {
 	}
 }
 
-// TestG01WrongPortFailureExplainsItself checks what a test author sees when
-// they still expect the backend. The failure names the route and shows the
-// proxy section. It does not require a particular status code.
 func TestG01WrongPortFailureExplainsItself(t *testing.T) {
 	out, err := runHelper(t, "TestHelperWrongPortExpectsOrders")
 	if err == nil {
@@ -176,8 +166,6 @@ func servedBy(backend string) func(*http.Response) error {
 	}
 }
 
-// notFromBackend accepts a response the orders process did not serve.
-// HTTP 200 or an X-Backend header is the backend. Any other response passes.
 func notFromBackend() func(*http.Response) error {
 	return func(r *http.Response) error {
 		got := r.Header.Get("X-Backend")
@@ -188,8 +176,6 @@ func notFromBackend() func(*http.Response) error {
 	}
 }
 
-// runHelper runs one helper test in a subprocess. The failure text the parent
-// asserts is that process's output, which includes the harness evidence.
 func runHelper(t *testing.T, test string, extraArgs ...string) (string, error) {
 	t.Helper()
 	cmd := exec.Command(os.Args[0], append([]string{"-test.run=^" + test + "$", "-test.v"}, extraArgs...)...)

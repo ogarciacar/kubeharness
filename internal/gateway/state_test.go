@@ -12,14 +12,6 @@ import (
 	"github.com/ogarciacar/kubeharness/internal/kube"
 )
 
-// Status fixtures in testdata are synthetic. They follow the Gateway API
-// status schema and the fields Envoy Gateway v1.9.3 writes. That writer
-// creates one RouteParentStatus per spec parentRef, and its Accepted,
-// Programmed, and route messages are copied here. No Kind dump of G01 was
-// read. route-two-parents.yaml covers StatusFor's duplicate-parent Stop.
-// A live Kind dump of G01's HTTPRoute has to show one matching parent for
-// edge before e2e waits on StatusFor.
-
 //go:embed testdata/*.yaml
 var testdata embed.FS
 
@@ -210,11 +202,6 @@ func TestStatusForNoParentRefStops(t *testing.T) {
 }
 
 func TestStatusForTwoParentsStops(t *testing.T) {
-	// Synthetic. Envoy Gateway v1.9.3 writes one status parent per spec
-	// parentRef, and G01 has one parentRef with no sectionName. This fixture
-	// adds a second status parent for the same Gateway and controller, with
-	// sectionName set, to lock the Stop. A live Kind dump still has to
-	// confirm a healthy route has one matching parent before e2e.
 	got := mustRoute(t, load(t, "route-two-parents.yaml"))
 	if !got.AttachedTo(edge) || len(got.Parents) != 2 {
 		t.Fatalf("route parents = spec %v status %+v", got.ParentRefs, got.Parents)

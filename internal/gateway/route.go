@@ -10,7 +10,7 @@ import (
 	"github.com/ogarciacar/kubeharness/internal/kube"
 )
 
-// AwaitRoute polls the HTTPRoute every statusInterval until its status for
+// AwaitRoute polls the HTTPRoute every kube.PollInterval until its status for
 // t.Gateway from cl.Controller is settled and check accepts those conditions.
 // Settled means StatusFor returned Done.
 //
@@ -22,7 +22,7 @@ import (
 // On failure the error carries the last reason and Evidence for t. The
 // Service in that evidence is t.Service. AwaitRoute does not look it up again.
 func AwaitRoute(ctx, evidenceCtx context.Context, cl Cluster, t Target, route kube.Ref, check func(Conditions) error) error {
-	_, err := Await(ctx, evidenceCtx, statusInterval, func(ctx context.Context) (struct{}, Verdict) {
+	_, err := Await(ctx, evidenceCtx, kube.PollInterval, func(ctx context.Context) (struct{}, Verdict) {
 		return struct{}{}, observeRoute(ctx, cl, t, route, check)
 	}, func(ctx context.Context) string {
 		return Evidence(ctx, cl, t.Gateway, t.Service)
@@ -30,7 +30,6 @@ func AwaitRoute(ctx, evidenceCtx context.Context, cl Cluster, t Target, route ku
 	return err
 }
 
-// observeRoute is one poll of AwaitRoute.
 func observeRoute(ctx context.Context, cl Cluster, t Target, route kube.Ref, check func(Conditions) error) Verdict {
 	if cl.Dynamic == nil {
 		return Stop(fmt.Errorf("route %s: no dynamic client", route))

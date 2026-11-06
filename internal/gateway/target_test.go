@@ -142,7 +142,6 @@ func TestAttachStopsWhenTheGatewayIsMissing(t *testing.T) {
 func TestAttachReturnsNilDialerWhenTheForwardCannotStart(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	// No selector: StartForward stops at once. A missing ready Pod would poll.
 	svc := proxyService("envoy-gateway-system", "envoy-edge", "10.96.12.7", 80)
 	cl := clusterWith(load(t, "gateway-programmed.yaml"), svc)
 	target, d, err := Attach(ctx, context.Background(), cl, edge, time.Second)
