@@ -3,19 +3,25 @@ package kubeharness
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 
+	"github.com/ogarciacar/kubeharness/internal/gateway"
 	"github.com/ogarciacar/kubeharness/internal/kube"
 	"github.com/ogarciacar/kubeharness/internal/lifecycle/lifecycletest"
 	"github.com/ogarciacar/kubeharness/internal/profile"
@@ -174,6 +180,226 @@ func TestGatewayClientDialsTheURLPortOnItsOwnTransport(t *testing.T) {
 	if _, err := first.Get("http://shop.example/orders"); err == nil || dialed != "shop.example:80" {
 		t.Fatalf("dialed %q err %v", dialed, err)
 	}
+}
+
+func TestRouteReadyRejectsAStatusAwaitRouteDidNotObserve(t *testing.T) {
+	const want = "RouteStatus was not observed by AwaitRoute"
+	if err := RouteReady(RouteStatus{}); err == nil || err.Error() != want {
+		t.Fatalf("zero RouteStatus = %v", err)
+	}
+	literal := RouteStatus{
+		Accepted:     Condition{Status: "True", Reason: "Accepted", Message: "ok"},
+		ResolvedRefs: Condition{Status: "True", Reason: "ResolvedRefs", Message: "ok"},
+		fromWait:     false,
+	}
+	if err := RouteReady(literal); err == nil || err.Error() != want {
+		t.Fatalf("literal = %v", err)
+	}
+}
+
+func TestRouteStatusIsWhatRouteReadyAccepts(t *testing.T) {
+	ready := routeStatus(gateway.Conditions{
+		{Type: "Accepted", Status: "True", Reason: "Accepted", Message: "Route is accepted"},
+		{Type: "ResolvedRefs", Status: "True", Reason: "ResolvedRefs", Message: "resolved"},
+	})
+	if err := RouteReady(ready); err != nil {
+		t.Fatal(err)
+	}
+	if ready.Accepted != (Condition{Status: "True", Reason: "Accepted", Message: "Route is accepted"}) || ready.ResolvedRefs.Status != "True" {
+		t.Fatalf("status = %+v", ready)
+	}
+
+	partial := routeStatus(gateway.Conditions{
+		{Type: "Accepted", Status: "False", Reason: "NotAllowedByListeners", Message: "no matching listener"},
+	})
+	if partial.ResolvedRefs != (Condition{}) {
+		t.Fatalf("missing condition = %+v", partial.ResolvedRefs)
+	}
+	const want = "Accepted=False reason=NotAllowedByListeners: no matching listener; ResolvedRefs not reported"
+	if err := RouteReady(partial); err == nil || err.Error() != want {
+		t.Fatalf("partial = %v", err)
+	}
+}
+
+func TestAwaitRouteStopsWhenTheRouteIsMissing(t *testing.T) {
+	tb := gatewayTB(t)
+	dyn := gatewayDynamic(t, nil)
+	harnessWithInstall(tb, &fakeInstall{})(func(h *Harness) {
+		useGateway(h, dyn).AwaitRoute("shop", RouteReady)
+	})
+	if len(tb.fatals) != 1 {
+		t.Fatalf("fatals = %q", tb.fatals)
+	}
+	for _, want := range []string{
+		"kubeharness: await route default/shop on gateway default/edge:",
+		"route default/shop not found; apply it first",
+		"proxy envoy-gateway-system/envoy-edge",
+	} {
+		if !strings.Contains(tb.fatals[0], want) {
+			t.Errorf("fatal lacks %q:\n%s", want, tb.fatals[0])
+		}
+	}
+	if strings.Contains(tb.fatals[0], "deadline") || strings.Contains(tb.fatals[0], "stopped early") {
+		t.Fatalf("missing route waited: %s", tb.fatals[0])
+	}
+}
+
+func TestAwaitRouteAcceptsASettledRoute(t *testing.T) {
+	tb := gatewayTB(t)
+	dyn := gatewayDynamic(t, settledRoute(EnvoyGateway().r.ControllerName))
+	harnessWithInstall(tb, &fakeInstall{})(func(h *Harness) {
+		useGateway(h, dyn).AwaitRoute("shop", RouteReady)
+	})
+	if len(tb.fatals) != 0 {
+		t.Fatalf("fatals = %q", tb.fatals)
+	}
+}
+
+func TestAwaitRouteRejectsABadRef(t *testing.T) {
+	tb := gatewayTB(t)
+	dyn := gatewayDynamic(t, nil)
+	harnessWithInstall(tb, &fakeInstall{})(func(h *Harness) {
+		useGateway(h, dyn).AwaitRoute("default/shop/extra", RouteReady)
+	})
+	if len(tb.fatals) != 1 || !strings.Contains(tb.fatals[0], `route "default/shop/extra"`) {
+		t.Fatalf("fatals = %q", tb.fatals)
+	}
+}
+
+func TestAwaitResponseStopsWhenTheBodyCannotBeReplayed(t *testing.T) {
+	tb := gatewayTB(t)
+	dyn := gatewayDynamic(t, nil)
+	dialed := false
+	req, err := http.NewRequest(http.MethodPost, "http://shop.example/orders", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Body = io.NopCloser(strings.NewReader("once"))
+	req.GetBody = nil
+	harnessWithInstall(tb, &fakeInstall{})(func(h *Harness) {
+		g := useGateway(h, dyn)
+		g.transport = &http.Transport{
+			DialContext: func(context.Context, string, string) (net.Conn, error) {
+				dialed = true
+				return nil, errors.New("dialed")
+			},
+		}
+		g.AwaitResponse(req, func(*http.Response) error { return nil })
+	})
+	if dialed {
+		t.Fatal("dialed a request that cannot be replayed")
+	}
+	if len(tb.fatals) != 1 {
+		t.Fatalf("fatals = %q", tb.fatals)
+	}
+	for _, want := range []string{
+		"kubeharness: await response POST http://shop.example/orders on gateway default/edge:",
+		"request body cannot be replayed",
+	} {
+		if !strings.Contains(tb.fatals[0], want) {
+			t.Errorf("fatal lacks %q:\n%s", want, tb.fatals[0])
+		}
+	}
+	if strings.Contains(tb.fatals[0], "deadline") {
+		t.Fatalf("unreplayable body waited: %s", tb.fatals[0])
+	}
+}
+
+func TestAwaitResponseSendsTheRequestThroughTheGateway(t *testing.T) {
+	tb := gatewayTB(t)
+	dyn := gatewayDynamic(t, nil)
+	var host string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host = r.Host
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(srv.Close)
+	req, err := http.NewRequest(http.MethodGet, "http://shop.example/orders", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	harnessWithInstall(tb, &fakeInstall{})(func(h *Harness) {
+		g := useGateway(h, dyn)
+		g.transport = &http.Transport{
+			Proxy: func(*http.Request) (*url.URL, error) { return nil, nil },
+			DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, network, srv.Listener.Addr().String())
+			},
+		}
+		g.AwaitResponse(req, func(resp *http.Response) error {
+			if resp.StatusCode != http.StatusNoContent {
+				return errors.New(resp.Status)
+			}
+			return nil
+		})
+	})
+	if host != "shop.example" {
+		t.Fatalf("Host = %q", host)
+	}
+	if len(tb.fatals) != 0 {
+		t.Fatalf("fatals = %q", tb.fatals)
+	}
+}
+
+func gatewayTB(t *testing.T) *fakeTB {
+	t.Helper()
+	// opsEndBy is the test deadline minus cleanup and the 10s evidence budget.
+	// 15s leaves a few seconds, so a wait that should Stop does not run for a minute.
+	return &fakeTB{dir: t.TempDir(), deadline: time.Now().Add(15 * time.Second)}
+}
+
+func gatewayDynamic(t *testing.T, route *unstructured.Unstructured) dynamic.Interface {
+	t.Helper()
+	routeGVR := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes"}
+	dyn := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), map[schema.GroupVersionResource]string{
+		{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gateways"}: "GatewayList",
+		routeGVR: "HTTPRouteList",
+	})
+	if route != nil {
+		if err := dyn.Tracker().Create(routeGVR, route, route.GetNamespace()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dyn
+}
+
+func useGateway(h *Harness, dyn dynamic.Interface) *Gateway {
+	gc := h.InstallGateway(EnvoyGateway())
+	gc.cl.Dynamic = dyn
+	gc.cl.Kube = fake.NewClientset()
+	return &Gateway{
+		c: gc,
+		target: gateway.Target{
+			Gateway: kube.Ref{Namespace: "default", Name: "edge"},
+			Service: kube.Ref{Namespace: "envoy-gateway-system", Name: "envoy-edge"},
+			Ports:   []int32{80},
+		},
+	}
+}
+
+func settledRoute(controller string) *unstructured.Unstructured {
+	return &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "gateway.networking.k8s.io/v1",
+		"kind":       "HTTPRoute",
+		"metadata": map[string]any{
+			"name":       "shop",
+			"namespace":  "default",
+			"generation": int64(1),
+		},
+		"spec": map[string]any{
+			"parentRefs": []any{map[string]any{"name": "edge"}},
+		},
+		"status": map[string]any{
+			"parents": []any{map[string]any{
+				"controllerName": controller,
+				"parentRef":      map[string]any{"name": "edge"},
+				"conditions": []any{
+					map[string]any{"type": "Accepted", "status": "True", "reason": "Accepted", "message": "Route is accepted", "observedGeneration": int64(1)},
+					map[string]any{"type": "ResolvedRefs", "status": "True", "reason": "ResolvedRefs", "message": "resolved", "observedGeneration": int64(1)},
+				},
+			}},
+		},
+	}}
 }
 
 func TestGatewayProfileName(t *testing.T) {

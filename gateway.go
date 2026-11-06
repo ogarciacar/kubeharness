@@ -1,7 +1,10 @@
 package kubeharness
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"k8s.io/client-go/dynamic"
@@ -14,6 +17,13 @@ import (
 // gatewayTimeout covers the first proxy Pod's image pull, which happens on
 // the first Gateway, so it matches readyTimeout.
 const gatewayTimeout = readyTimeout
+
+// routeTimeout and responseTimeout cover control-plane and xDS propagation.
+// Those take seconds. A long limit only hides bugs.
+const (
+	routeTimeout    = time.Minute
+	responseTimeout = time.Minute
+)
 
 // GatewayClass is the GatewayClass that every gateway profile creates. Use it
 // as gatewayClassName in Gateway manifests, and the same manifests work under
@@ -137,7 +147,7 @@ func (c *GatewayController) Gateway(ref string) *Gateway {
 type Gateway struct {
 	c      *GatewayController
 	target gateway.Target
-	// transport is shared by every Client from this handle, so they share
+	// transport is shared by every Client and by AwaitResponse, so they share
 	// connections and the dialer's forwards. Timeout set on a client applies
 	// only to that client.
 	transport *http.Transport
@@ -153,6 +163,108 @@ type Gateway struct {
 // once the test ends.
 func (g *Gateway) Client() *http.Client {
 	return &http.Client{Transport: g.transport}
+}
+
+// AwaitRoute waits until the HTTPRoute named ref ("[namespace/]name", default
+// "default") has status from this Gateway's controller, for this Gateway, for
+// the route's current generation, and check accepts that status. Status
+// written for an earlier generation never reaches check, so AwaitRoute after
+// an Apply that changed the route waits for the change.
+//
+// A route that does not exist, has no parentRef to this Gateway, or has two
+// status parents for this Gateway and this controller, fails at once.
+// Otherwise AwaitRoute fails after 1 minute with check's last error, the
+// route's conditions, and the Gateway's evidence.
+func (g *Gateway) AwaitRoute(ref string, check func(RouteStatus) error) {
+	h := g.c.h
+	h.t.Helper()
+	route := h.ref("route", ref)
+	ctx, evidence, cancel := h.op(routeTimeout)
+	defer cancel()
+	err := gateway.AwaitRoute(ctx, evidence, g.c.cl, g.target, route, func(cs gateway.Conditions) error {
+		return check(routeStatus(cs))
+	})
+	if err != nil {
+		h.fatalf(ctx, "kubeharness: await route %s on gateway %s: %v", route, g.target.Gateway, err)
+	}
+}
+
+// AwaitResponse sends req through the Gateway every 250ms until check accepts
+// a response, and fails the test after 1 minute with the last attempt's status
+// line or transport error, the head of its body, check's last error, and the
+// Gateway's evidence. Each attempt sends a fresh clone of req with a 5s limit,
+// so req may be reused afterwards. A req whose body cannot be replayed (GetBody
+// is nil) fails at once. check sees the response with its body buffered, up to
+// 1 MiB. It need not close the body. The error includes the status line the
+// proxy sent.
+func (g *Gateway) AwaitResponse(req *http.Request, check func(*http.Response) error) {
+	h := g.c.h
+	h.t.Helper()
+	ctx, evidence, cancel := h.op(responseTimeout)
+	defer cancel()
+	if err := gateway.AwaitResponse(ctx, evidence, g.c.cl, g.target, g.transport, req, check); err != nil {
+		h.fatalf(ctx, "kubeharness: await response %s %s on gateway %s: %v", req.Method, req.URL, g.target.Gateway, err)
+	}
+}
+
+// RouteStatus is what one Gateway's controller says about one HTTPRoute
+// attached to that Gateway, for the route's current generation.
+// routeStatus is the only constructor. RouteReady rejects any other value.
+type RouteStatus struct {
+	// Accepted says whether the Gateway accepted the route, for example
+	// False with reason NotAllowedByListeners.
+	Accepted Condition
+	// ResolvedRefs says whether every backendRef resolved, for example False
+	// with reason RefNotPermitted or BackendNotFound.
+	ResolvedRefs Condition
+	// fromWait is true only on a value routeStatus built after StatusFor
+	// accepted the parent. Callers cannot set it.
+	fromWait bool
+}
+
+// Condition is one status condition. Status is "True", "False", "Unknown",
+// or "" when the controller did not report the condition at all.
+type Condition struct{ Status, Reason, Message string }
+
+// RouteReady accepts a route the Gateway accepted and whose backendRefs all
+// resolved. Its error names each condition that is not True, with its reason
+// and message.
+func RouteReady(s RouteStatus) error {
+	if !s.fromWait {
+		return errors.New("RouteStatus was not observed by AwaitRoute")
+	}
+	var bad []string
+	for _, c := range []struct {
+		name string
+		cond Condition
+	}{
+		{name: "Accepted", cond: s.Accepted},
+		{name: "ResolvedRefs", cond: s.ResolvedRefs},
+	} {
+		if c.cond.Status == "True" {
+			continue
+		}
+		if c.cond.Status == "" {
+			bad = append(bad, c.name+" not reported")
+			continue
+		}
+		bad = append(bad, fmt.Sprintf("%s=%s reason=%s: %s", c.name, c.cond.Status, c.cond.Reason, c.cond.Message))
+	}
+	if len(bad) == 0 {
+		return nil
+	}
+	return errors.New(strings.Join(bad, "; "))
+}
+
+// routeStatus is the one place internal conditions become the public type,
+// and the only place fromWait is set. A condition the controller did not
+// write becomes the zero Condition.
+func routeStatus(cs gateway.Conditions) RouteStatus {
+	pick := func(t string) Condition {
+		c, _ := cs.Get(t)
+		return Condition{Status: c.Status, Reason: c.Reason, Message: c.Message}
+	}
+	return RouteStatus{Accepted: pick("Accepted"), ResolvedRefs: pick("ResolvedRefs"), fromWait: true}
 }
 
 // ref parses "[namespace/]name" for a method's argument and fails the test
