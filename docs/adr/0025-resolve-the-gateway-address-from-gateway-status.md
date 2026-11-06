@@ -4,7 +4,7 @@ Date: 2026-11-05
 
 ## Status
 
-Accepted. A direction for S3, not yet backed by code.
+Superseded by [31](0031-reach-a-gateway-through-its-status-address-and-a-port-forward.md).
 
 ## Context
 
