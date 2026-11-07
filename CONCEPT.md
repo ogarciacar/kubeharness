@@ -1,6 +1,6 @@
 # KubeHarness — Concept and Planning Baseline
 
-> **Document status:** Proposed system concept. S0 to S2 are implemented; S3 slices 0 to 3 are implemented; everything from S3 slice 4 on is still a proposal.  
+> **Document status:** Proposed system concept. S0 to S2 are implemented; S3 slices 0 to 4 are implemented; everything from S3 slice 5 on is still a proposal.  
 > **Last reviewed:** 2026-11-07.  
 > **Audience:** Maintainer, reviewers, contributors, and pstack planning agents.  
 > **Source of truth for:** Product boundary, accepted direction, candidate requirements, lifecycle and platform architecture, verification experiments, success measures, and open questions.  
@@ -493,7 +493,7 @@ The **priority** of a profile is distinct from exact version numbering; do not e
 | S0 — Foundation | Small Go module, local test runner and testability seams | Fast unit tests, Docker prereq detection, documented pinned toolchain | Done (#1, #2) |
 | S1 — Owned lifecycle | Create and dispose of a Kind cluster safely | Partial failures, cancellation, double cleanup, deadline and leak tests | Done (#1) |
 | S2 — M01 vertical slice | Orders + PostgreSQL + migrations | One reproducible end-to-end test; negative migration scenario; diagnostics | Done (#3, #4), accepted |
-| S3 — Gateway API | Envoy Gateway standard profile | G01/G02/G03, resource status and data-plane evidence | In progress (G01 and G02 landed; G03 next) |
+| S3 — Gateway API | Envoy Gateway standard profile | G01/G02/G03, resource status and data-plane evidence | In progress (G01–G03 landed; slice 4 accepted; slice 5 gated; slice 6 / S4 entry next) |
 | S4 — Agentgateway | Kubernetes-native MCP profiles | A01/A02/A03 with deterministic tool servers and identities | Proposed |
 | S5 — Istio | East-west networking profile | I01/I02/I03 with explicit traffic-origin checks | Proposed |
 | S6 — Agent Router | Envoy AI routing profile | R01/R02/R03 with local mock providers and Redis | Proposed |
@@ -579,6 +579,23 @@ Cost rule after these numbers: image pulls and controller startup still do not d
 `WaitReady` and `Forward` take `"namespace/name"`. `Harness.Delete(dir)` removes manifests in reverse Apply order until each GET is `NotFound` (D32). `examples/gateway` `TestG02ReferenceGrant` proves deny → grant Apply → allow → grant Delete → deny through `AwaitRoute`, `AwaitResponse`, and a payments request counter read over `Forward("payments/payments", 80)`. `TestG02DeniedRouteExplainsItself` expects `RouteReady` to fail with `route shop/pay` and `RefNotPermitted` in the existing evidence text.
 
 One Kind drive on Docker Desktop (linux/arm64) passed both tests (`TestG02ReferenceGrant` 57.4s, `TestG02DeniedRouteExplainsItself` 113.2s) with `cleanup=succeeded remaining=0` and `kubeharness leaks: 0` after the drive. A 20-run screen of `TestG02ReferenceGrant` alone passed every run (`pass=20 fail=0 leaked_runs=0`). The slice is accepted. G03 is next.
+
+### S3 slice 4 result: accept
+
+`examples/gateway` `TestG03WeightFlip` flips HTTPRoute `shop/checkout` 100/0 ↔ 0/100 under live traffic through `gw.Client()`, keeping status and data-plane clocks apart with `AwaitRoute(RouteReady)` and a hold-window ledger judged by `judge`. Route-only phase dirs under `testdata/g03-route/{blue,green}` bump generation on every Apply. Continuous samples set `Request.Close` and require `X-Backend` to match the JSON `backend` field.
+
+Accept bar (locked before the screen): `pass=20`, `fail=0`, `leaked_runs=0`, `leaks_unknown=0`, `transition_err max=0`. Status and dataplane medians/maxes are evidence only; no hard timing caps.
+
+Measured on Darwin 25.6.0 arm64 (12 CPUs) with Docker Desktop aarch64, kind v0.33.0, Kubernetes v1.37.0, Gateway API v1.6.1, and Envoy Gateway v1.9.3. Command:
+
+```
+hack/screen.sh 20 '^TestG03WeightFlip$' examples/gateway
+examples/gateway/convergence.sh <logdir>
+```
+
+Screen line: `screening: runs=20 pass=20 fail=0 leaked_runs=0 leaks_unknown=0`. Convergence line: `convergence flips=40 status median=0.53s max=0.54s dataplane median=0.05s max=0.07s transition_err max=0 switches max=1 hold min=60`. The bar is met. The slice is accepted.
+
+Cost rule after these numbers: create and controller ready still dominate each run (`create` about 8 to 9s, `ready` about 16 to 18s on the screen report line). Image pulls do not show up as the limiter, so S3 slice 5 (preload) stays gated. Next build is S3 slice 6 / S4 entry: the agentgateway recipe so G01 to G03 pass under both profiles with no test changes.
 
 ## 11. Design risks, trade-offs and mitigations
 
