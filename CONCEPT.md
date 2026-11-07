@@ -558,6 +558,21 @@ Kubelet pulled `envoyproxy/gateway:v1.9.3` in 5.0 to 5.9s and the Envoy proxy im
 
 `h.InstallGateway(kubeharness.EnvoyGateway())` installs the embedded recipe (D28, D29). On Docker Desktop (linux/arm64, 12 CPUs) the report line's `install=` was 15.7s, 15.7s, and 15.1s in three runs, against 16.1 to 17.0s for the same steps in slice 0 (CRDs, controller ready, class accepted), which fetched the Gateway API CRDs over the network and ran Helm. Embedding saves about a second; image pulls and controller startup remain most of the install. A controller image digest that does not exist fails the install at the operation deadline with the controller Pod's pull errors, and the cluster is still removed.
 
+### S3 slice 2 result: accept
+
+`GatewayController.Gateway(ref)` resolves the Gateway status `IPAddress` to exactly one ClusterIP Service and opens one loopback port-forward per listener port (D31). `Client`, `AwaitRoute`, and `AwaitResponse` send real HTTP through that path. G01 and the closed-`targetPort` negative pass in CI and on Docker Desktop. A live HTTPRoute `shop` for Gateway `edge` had one matching parent for the Envoy Gateway controller, so `StatusFor`'s duplicate-parent Stop is safe for G01.
+
+Measured with `examples/gateway/setuplines` and `examples/gateway/compare.sh`, on Docker Desktop with kind v0.33.0 and Kubernetes v1.37.0 (linux/arm64, 12 CPUs). Load averages at the start of the compare were about 3.8 to 5.1. The script alternates harness and baseline so both sides see the same noise. Every run passed (`failures=0`).
+
+| | kubeharness | plain kind + Helm + kubectl + Go |
+| --- | --- | --- |
+| Setup code lines | 12 | 141 |
+| Wall time, median of 5 alternating runs | 52.2s (51.5 to 55.0s) | 54.2s (52.5 to 54.7s) |
+
+The time gap is inside the run-to-run ranges. Totals match the slice 0 end-to-end window (~53 to 56s). Cluster create, profile install, and Programmed still dominate the wall clock. The harness cuts setup code by about nine tenths at no measurable time cost, so the slice 2 handle is accepted and G02 can build on it.
+
+Cost rule after these numbers: image pulls and controller startup still do not dominate over create. S3 keeps one cluster per test. Slice 5 (image preload) stays gated until a later screen shows pulls as the limiter.
+
 ## 11. Design risks, trade-offs and mitigations
 
 | Risk | Why it matters | Mitigation / investigation |
