@@ -9,12 +9,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/ogarciacar/kubeharness"
 )
@@ -184,4 +187,210 @@ func runHelper(t *testing.T, test string, extraArgs ...string) (string, error) {
 	cmd.Stdout, cmd.Stderr = &out, &out
 	err := cmd.Run()
 	return out.String(), err
+}
+
+const countHeader = "X-Kubeharness-Count"
+
+// reading is one GET /requests body. Boot identifies the payments process.
+// Count is how many requests that process has seen with X-Kubeharness-Count: 1.
+// The example cannot import the backend, so this struct repeats those JSON fields.
+type reading struct {
+	Boot  string `json:"boot"`
+	Count int64  `json:"count"`
+}
+
+func TestG02ReferenceGrant(t *testing.T) {
+	for _, p := range profiles {
+		t.Run(p.Name(), func(t *testing.T) {
+			h := kubeharness.New(t)
+			gc := h.InstallGateway(p)
+			buildBackendImage(t)
+			h.LoadImage(backendImage)
+			h.Apply("testdata/g02")
+			h.WaitReady("shop/orders")
+			h.WaitReady("payments/payments")
+			gw := gc.Gateway("shop/edge")
+			read := paymentsCounter(t, h)
+
+			denied(t, gw, read)
+			h.Apply("testdata/g02-grant")
+			allowed(t, gw, read)
+			h.Delete("testdata/g02-grant")
+			denied(t, gw, read)
+		})
+	}
+}
+
+func denied(t *testing.T, gw *kubeharness.Gateway, read func() reading) {
+	t.Helper()
+	gw.AwaitRoute("shop/pay", refNotPermitted)
+	gw.AwaitResponse(get("http://shop.example/orders"), servedBy("orders"))
+	flatPayments(t, gw.Client(), read)
+}
+
+func allowed(t *testing.T, gw *kubeharness.Gateway, read func() reading) {
+	t.Helper()
+	gw.AwaitRoute("shop/pay", kubeharness.RouteReady)
+	before := read()
+	gw.AwaitResponse(counted(get("http://shop.example/payments")), servedBy("payments"))
+	after := read()
+	if after.Count <= before.Count {
+		t.Fatalf("payments counter %d to %d, want an increase", before.Count, after.Count)
+	}
+}
+
+// refNotPermitted accepts a route the Gateway accepted whose cross-namespace
+// backend failed only because a reference was not permitted.
+// Accepted=False is the listener failure. The same-namespace layout exists
+// so the test does not treat that failure as denial.
+func refNotPermitted(s kubeharness.RouteStatus) error {
+	if s.Accepted.Status != "True" {
+		return fmt.Errorf("Accepted=%s reason=%s, want True", s.Accepted.Status, s.Accepted.Reason)
+	}
+	c := s.ResolvedRefs
+	if c.Status == "False" && c.Reason == "RefNotPermitted" {
+		return nil
+	}
+	return fmt.Errorf("ResolvedRefs=%s reason=%s, want False reason=RefNotPermitted", c.Status, c.Reason)
+}
+
+func counted(req *http.Request) *http.Request {
+	req.Header.Set(countHeader, "1")
+	return req
+}
+
+// flatPayments repeats a burst of five counted GETs of /payments until the
+// payments counter is unchanged across the burst, or a minute passes.
+// It does not read the HTTP status. Status can flip before Envoy drops the
+// cluster, so one accepted AwaitResponse is not the absence proof.
+// read fails the test when the payments process changes. The retry must not
+// open a new baseline on a restarted counter.
+func flatPayments(t *testing.T, client *http.Client, read func() reading) {
+	t.Helper()
+	deadline := time.Now().Add(time.Minute)
+	var before, after reading
+	for {
+		before = read()
+		for i := 0; i < 5; i++ {
+			req := counted(get("http://shop.example/payments"))
+			resp, err := client.Do(req)
+			if resp != nil {
+				resp.Body.Close()
+			}
+			if err != nil && time.Now().After(deadline) {
+				t.Fatalf("payments burst: %v", err)
+			}
+		}
+		after = read()
+		if after.Count == before.Count {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("payments counter %d to %d across a burst of 5", before.Count, after.Count)
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+}
+
+// paymentsCounter forwards the payments Service and returns a reader of
+// GET /requests. The first call records Boot. A later call with a different
+// Boot fails the test. Forward pins one Pod, so the Deployment must say
+// replicas: 1 or the count is a different Pod from the one the Service uses.
+func paymentsCounter(t *testing.T, h *kubeharness.Harness) func() reading {
+	t.Helper()
+	if got := paymentsReplicas(t); got != 1 {
+		t.Fatalf("payments replicas = %d, want 1", got)
+	}
+	addr := h.Forward("payments/payments", 80)
+	url := "http://" + addr + "/requests"
+	var boot string
+	return func() reading {
+		t.Helper()
+		got := readCount(t, url)
+		if boot == "" {
+			boot = got.Boot
+			return got
+		}
+		if got.Boot != boot {
+			t.Fatalf("payments boot %q then %q; the process restarted and the counter is not a delta", boot, got.Boot)
+		}
+		return got
+	}
+}
+
+func readCount(t *testing.T, url string) reading {
+	t.Helper()
+	resp, err := http.Get(url)
+	if err != nil {
+		t.Fatalf("GET %s: %v", url, err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("GET %s: %v", url, err)
+	}
+	var got reading
+	if err := json.Unmarshal(body, &got); err != nil || resp.StatusCode != http.StatusOK || got.Boot == "" {
+		t.Fatalf("GET %s = %d %q, want boot and count", url, resp.StatusCode, body)
+	}
+	return got
+}
+
+// paymentsReplicas reads spec.replicas from the payments Deployment document.
+// Forward pins one Pod, so any other value makes the counter the wrong Pod.
+func paymentsReplicas(t *testing.T) int {
+	t.Helper()
+	data, err := os.ReadFile("testdata/g02/21-payments.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	inDeployment := false
+	seen := false
+	got := 0
+	for _, line := range strings.Split(string(data), "\n") {
+		switch {
+		case line == "kind: Deployment":
+			inDeployment = true
+		case strings.HasPrefix(line, "kind:"):
+			inDeployment = false
+		case inDeployment && strings.HasPrefix(line, "  replicas:"):
+			v := strings.TrimSpace(strings.TrimPrefix(line, "  replicas:"))
+			got, err = strconv.Atoi(v)
+			if err != nil {
+				t.Fatalf("payments replicas %q: %v", v, err)
+			}
+			seen = true
+		}
+	}
+	if !seen {
+		t.Fatal("payments Deployment has no spec.replicas")
+	}
+	return got
+}
+
+func TestG02DeniedRouteExplainsItself(t *testing.T) {
+	out, err := runHelper(t, "TestHelperDeniedPayExpectsReady")
+	if err == nil {
+		t.Fatalf("RouteReady passed with no ReferenceGrant:\n%s", out)
+	}
+	for _, want := range []string{"route shop/pay", "RefNotPermitted"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("failure output lacks %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestHelperDeniedPayExpectsReady(t *testing.T) {
+	if os.Getenv("KUBEHARNESS_E2E_HELPER") != "1" {
+		t.Skip("helper for TestG02DeniedRouteExplainsItself")
+	}
+	h := kubeharness.New(t)
+	gc := h.InstallGateway(kubeharness.EnvoyGateway())
+	buildBackendImage(t)
+	h.LoadImage(backendImage)
+	h.Apply("testdata/g02")
+	h.WaitReady("shop/orders")
+	h.WaitReady("payments/payments")
+	gw := gc.Gateway("shop/edge")
+	gw.AwaitRoute("shop/pay", kubeharness.RouteReady)
 }
