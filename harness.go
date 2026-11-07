@@ -63,9 +63,6 @@ const (
 	evidenceTimeout = 10 * time.Second
 )
 
-// deleteTimeout bounds Delete, including the poll until each object is gone.
-// A ReferenceGrant returns on the first absent GET. A workload directory can
-// spend a pod grace period in the poll. op still clips the deadline to opsEndBy.
 const deleteTimeout = time.Minute
 
 // New creates a Kind cluster owned by t and waits until it accepts workloads.
@@ -233,8 +230,6 @@ func (h *Harness) Delete(dir string) {
 	}
 }
 
-// ref parses a user ref and fails the test on a bad string.
-// It is the only parse. WaitReady, Forward, and the gateway methods call it.
 func (h *Harness) ref(kind, s string) kube.Ref {
 	h.t.Helper()
 	r, err := kube.ParseRef(s, kube.DefaultNamespace)

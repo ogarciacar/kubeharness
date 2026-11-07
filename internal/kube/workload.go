@@ -80,7 +80,6 @@ func jobState(j *batchv1.Job) Progress {
 // WaitDeployment polls until the Deployment is rolled out and available.
 // When it fails or ctx ends, the error carries the last observation and the
 // state of the Deployment's Pods, gathered within evidenceCtx.
-// The name in the error is namespace/name.
 func WaitDeployment(ctx, evidenceCtx context.Context, client kubernetes.Interface, namespace, name string) error {
 	last := "not observed yet"
 	var seen *appsv1.Deployment

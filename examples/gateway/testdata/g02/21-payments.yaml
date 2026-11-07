@@ -1,5 +1,3 @@
-# replicas stays 1. The test reads this line. Forward pins one Pod, and that
-# Pod is the only counter the burst can see.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

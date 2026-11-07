@@ -16,8 +16,6 @@ import (
 	"time"
 )
 
-// countHeader is the only signal that increments the counter.
-// The test sets it to 1. The readiness probe and GET /requests do not.
 const countHeader = "X-Kubeharness-Count"
 
 type Reply struct {
@@ -26,8 +24,6 @@ type Reply struct {
 	Host    string `json:"host"`
 }
 
-// Boot and count travel together so a reader cannot pair a count from one
-// process with a boot from another.
 type reading struct {
 	Boot  string `json:"boot"`
 	Count int64  `json:"count"`
@@ -49,7 +45,6 @@ func handler(name, boot string, requests *atomic.Int64) http.Handler {
 	})
 }
 
-// processBoot is new for each process. A restarted counter must not pass as a delta.
 func processBoot() string {
 	var b [8]byte
 	if _, err := rand.Read(b[:]); err != nil {

@@ -291,11 +291,6 @@ func TestForwardRejectsABadRef(t *testing.T) {
 	}
 }
 
-// TestWaitReadyGetsTheNamespacedDeployment fails if WaitReady still calls
-// WaitDeployment in namespace default with the raw string "payments/payments".
-// The fake client has an available Deployment payments/payments and no
-// Deployment in default. WaitReady("payments/payments") returns. The GET
-// namespace is payments and the GET name is payments.
 func TestWaitReadyGetsTheNamespacedDeployment(t *testing.T) {
 	replicas := int32(1)
 	deploy := &appsv1.Deployment{
@@ -330,11 +325,6 @@ func TestWaitReadyGetsTheNamespacedDeployment(t *testing.T) {
 	}
 }
 
-// TestAwaitRouteKeepsPollingWhenGenerationAlreadyMatches locks the grant wait.
-// The HTTPRoute generation stays 1. The matching parent observedGeneration
-// stays 1. The first three checks return an error. The fourth returns nil.
-// Nothing writes the route object between checks. AwaitRoute returns.
-// A short-circuit on a matching generation would fatal on the first check.
 func TestAwaitRouteKeepsPollingWhenGenerationAlreadyMatches(t *testing.T) {
 	tb := awaitStopTB(t)
 	route := settledRoute(EnvoyGateway().r.ControllerName)

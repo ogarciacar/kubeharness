@@ -13,11 +13,13 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 
 	"github.com/ogarciacar/kubeharness"
 )
@@ -191,9 +193,6 @@ func runHelper(t *testing.T, test string, extraArgs ...string) (string, error) {
 
 const countHeader = "X-Kubeharness-Count"
 
-// reading is one GET /requests body. Boot identifies the payments process.
-// Count is how many requests that process has seen with X-Kubeharness-Count: 1.
-// The example cannot import the backend, so this struct repeats those JSON fields.
 type reading struct {
 	Boot  string `json:"boot"`
 	Count int64  `json:"count"`
@@ -239,10 +238,6 @@ func allowed(t *testing.T, gw *kubeharness.Gateway, read func() reading) {
 	}
 }
 
-// refNotPermitted accepts a route the Gateway accepted whose cross-namespace
-// backend failed only because a reference was not permitted.
-// Accepted=False is the listener failure. The same-namespace layout exists
-// so the test does not treat that failure as denial.
 func refNotPermitted(s kubeharness.RouteStatus) error {
 	if s.Accepted.Status != "True" {
 		return fmt.Errorf("Accepted=%s reason=%s, want True", s.Accepted.Status, s.Accepted.Reason)
@@ -259,12 +254,6 @@ func counted(req *http.Request) *http.Request {
 	return req
 }
 
-// flatPayments repeats a burst of five counted GETs of /payments until the
-// payments counter is unchanged across the burst, or a minute passes.
-// It does not read the HTTP status. Status can flip before Envoy drops the
-// cluster, so one accepted AwaitResponse is not the absence proof.
-// read fails the test when the payments process changes. The retry must not
-// open a new baseline on a restarted counter.
 func flatPayments(t *testing.T, client *http.Client, read func() reading) {
 	t.Helper()
 	deadline := time.Now().Add(time.Minute)
@@ -292,10 +281,8 @@ func flatPayments(t *testing.T, client *http.Client, read func() reading) {
 	}
 }
 
-// paymentsCounter forwards the payments Service and returns a reader of
-// GET /requests. The first call records Boot. A later call with a different
-// Boot fails the test. Forward pins one Pod, so the Deployment must say
-// replicas: 1 or the count is a different Pod from the one the Service uses.
+// Forward pins one Pod, so the Deployment must say replicas: 1 or the count
+// is a different Pod from the one the Service uses.
 func paymentsCounter(t *testing.T, h *kubeharness.Harness) func() reading {
 	t.Helper()
 	if got := paymentsReplicas(t); got != 1 {
@@ -336,36 +323,31 @@ func readCount(t *testing.T, url string) reading {
 	return got
 }
 
-// paymentsReplicas reads spec.replicas from the payments Deployment document.
-// Forward pins one Pod, so any other value makes the counter the wrong Pod.
 func paymentsReplicas(t *testing.T) int {
 	t.Helper()
 	data, err := os.ReadFile("testdata/g02/21-payments.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	inDeployment := false
-	seen := false
-	got := 0
-	for _, line := range strings.Split(string(data), "\n") {
-		switch {
-		case line == "kind: Deployment":
-			inDeployment = true
-		case strings.HasPrefix(line, "kind:"):
-			inDeployment = false
-		case inDeployment && strings.HasPrefix(line, "  replicas:"):
-			v := strings.TrimSpace(strings.TrimPrefix(line, "  replicas:"))
-			got, err = strconv.Atoi(v)
-			if err != nil {
-				t.Fatalf("payments replicas %q: %v", v, err)
-			}
-			seen = true
+	dec := utilyaml.NewYAMLOrJSONDecoder(bytes.NewReader(data), 4096)
+	for {
+		var u unstructured.Unstructured
+		if err := dec.Decode(&u); err == io.EOF {
+			break
+		} else if err != nil {
+			t.Fatalf("decode payments manifest: %v", err)
 		}
+		if u.GetKind() != "Deployment" || u.GetName() != "payments" {
+			continue
+		}
+		replicas, found, err := unstructured.NestedInt64(u.Object, "spec", "replicas")
+		if err != nil || !found {
+			t.Fatal("payments Deployment has no spec.replicas")
+		}
+		return int(replicas)
 	}
-	if !seen {
-		t.Fatal("payments Deployment has no spec.replicas")
-	}
-	return got
+	t.Fatal("payments Deployment not found in testdata/g02/21-payments.yaml")
+	return 0
 }
 
 func TestG02DeniedRouteExplainsItself(t *testing.T) {

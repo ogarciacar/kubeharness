@@ -202,9 +202,7 @@ func ParseRoute(u *unstructured.Unstructured) (Route, error) {
 // whether it may reach a caller's check. It is the only settled-status rule.
 //
 // Done means that parent's conditions were written for the route generation.
-// Done does not mean the caller's check will accept them. A ReferenceGrant
-// does not change the route generation, so a later check sees Done again
-// and accepts or rejects the new reason itself.
+// Done does not mean the caller's check will accept them.
 //
 //   - Stop when the route has no parentRef to gw. Waiting cannot fix that.
 //   - Stop when two status.parents entries match gw and controller. Merging

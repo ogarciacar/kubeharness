@@ -112,12 +112,8 @@ func DecodeManifests(source string, data []byte) ([]*unstructured.Unstructured, 
 	}
 }
 
-// errNotServed means the API server does not serve this object's kind.
-// Delete treats that as already gone. Apply waits for the kind, so it never
-// returns this error.
 var errNotServed = errors.New("kind not served")
 
-// namespaceOrDefault is the only empty-namespace rule.
 func namespaceOrDefault(ns string) string {
 	if ns == "" {
 		return DefaultNamespace
@@ -125,11 +121,6 @@ func namespaceOrDefault(ns string) string {
 	return ns
 }
 
-// bind maps obj and, for a namespaced kind, writes namespaceOrDefault onto obj.
-// A CRD earlier in the same Apply is what makes the next kind mappable, so
-// this runs at that object's write.
-//
-// With waitForKind false, the first NoMatch error is errNotServed.
 func bind(ctx context.Context, cfg *rest.Config, mapper *meta.RESTMapper, client dynamic.Interface, obj *unstructured.Unstructured, waitForKind bool) (dynamic.ResourceInterface, ObjectRef, error) {
 	gvk := obj.GroupVersionKind()
 	var mapping *meta.RESTMapping
@@ -185,8 +176,7 @@ func Apply(ctx context.Context, cfg *rest.Config, objs []*unstructured.Unstructu
 }
 
 // Delete removes objs from last to first and waits until each GET returns
-// NotFound. Propagation is background so a deadline error can name
-// metadata.finalizers.
+// NotFound.
 func Delete(ctx context.Context, cfg *rest.Config, objs []*unstructured.Unstructured) error {
 	mapper, err := newMapper(ctx, cfg)
 	if err != nil {
@@ -199,7 +189,6 @@ func Delete(ctx context.Context, cfg *rest.Config, objs []*unstructured.Unstruct
 	return deleteEach(ctx, cfg, &mapper, client, objs)
 }
 
-// The index walk leaves the caller's slice in its original order.
 func deleteEach(ctx context.Context, cfg *rest.Config, mapper *meta.RESTMapper, client dynamic.Interface, objs []*unstructured.Unstructured) error {
 	for i := len(objs) - 1; i >= 0; i-- {
 		res, ref, err := bind(ctx, cfg, mapper, client, objs[i], false)
@@ -219,9 +208,7 @@ func deleteEach(ctx context.Context, cfg *rest.Config, mapper *meta.RESTMapper, 
 			if apierrors.IsNotFound(gerr) {
 				continue
 			}
-			// The object is already deleting, so the poll waits for absence
-			// instead of failing this retry.
-			if gerr != nil || got.GetDeletionTimestamp().IsZero() {
+			if gerr != nil || !alreadyDeleting(got) {
 				return fmt.Errorf("delete %s: %w", ref, err)
 			}
 		}
@@ -232,9 +219,10 @@ func deleteEach(ctx context.Context, cfg *rest.Config, mapper *meta.RESTMapper, 
 	return nil
 }
 
-// waitAbsent polls GET until NotFound.
-// The confirming GET after ctx ends uses a context that outlives ctx, so a
-// NotFound that arrives with the deadline still counts as gone.
+func alreadyDeleting(obj *unstructured.Unstructured) bool {
+	return obj != nil && !obj.GetDeletionTimestamp().IsZero()
+}
+
 func waitAbsent(ctx context.Context, res dynamic.ResourceInterface, ref ObjectRef) error {
 	var finalizers []string
 	for {

@@ -1,6 +1,5 @@
 # Gateway and HTTPRoute share namespace shop, so a missing grant is
 # RefNotPermitted on the backend, not NotAllowedByListeners.
-# One parentRef. /orders stays in shop. /payments crosses to payments.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
