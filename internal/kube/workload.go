@@ -93,7 +93,7 @@ func WaitDeployment(ctx, evidenceCtx context.Context, client kubernetes.Interfac
 			case Done:
 				return nil
 			case Failed:
-				return fmt.Errorf("deployment %s failed: %s%s%s", name, last, deploymentConditions(d), podEvidence(evidenceCtx, client, namespace, d.Spec.Selector))
+				return fmt.Errorf("deployment %s/%s failed: %s%s%s", namespace, name, last, deploymentConditions(d), podEvidence(evidenceCtx, client, namespace, d.Spec.Selector))
 			}
 		} else if ctx.Err() == nil {
 			last = err.Error()
@@ -104,7 +104,7 @@ func WaitDeployment(ctx, evidenceCtx context.Context, client kubernetes.Interfac
 			if seen != nil {
 				evidence = deploymentConditions(seen) + podEvidence(evidenceCtx, client, namespace, seen.Spec.Selector)
 			}
-			return fmt.Errorf("deployment %s not available: %w; last observed: %s%s", name, ctx.Err(), last, evidence)
+			return fmt.Errorf("deployment %s/%s not available: %w; last observed: %s%s", namespace, name, ctx.Err(), last, evidence)
 		case <-time.After(PollInterval):
 		}
 	}

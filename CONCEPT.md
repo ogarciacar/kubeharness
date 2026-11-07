@@ -1,7 +1,7 @@
 # KubeHarness — Concept and Planning Baseline
 
-> **Document status:** Proposed system concept. S0 to S2 are implemented; everything from S3 on is still a proposal.  
-> **Last reviewed:** 2026-11-04.  
+> **Document status:** Proposed system concept. S0 to S2 are implemented; S3 slices 0 to 3 are implemented; everything from S3 slice 4 on is still a proposal.  
+> **Last reviewed:** 2026-11-07.  
 > **Audience:** Maintainer, reviewers, contributors, and pstack planning agents.  
 > **Source of truth for:** Product boundary, accepted direction, candidate requirements, lifecycle and platform architecture, verification experiments, success measures, and open questions.  
 > **Companion:** [README.md](README.md) provides the public-facing introduction.
@@ -61,6 +61,7 @@ Each decision has an Architecture Decision Record in `docs/adr/` ([D27](docs/adr
 | [D29](docs/adr/0029-render-profile-manifests-offline-and-embed-them.md) | Profile manifests are rendered offline from pins with the Helm SDK in `hack/render`, embedded, and applied with server-side apply; no Helm or network for manifests at test time | Accepted |
 | [D30](docs/adr/0030-gateway-api-tested-combination.md) | The `gateway-api` tested combination is kind v0.33.0 with Kubernetes v1.37.0 (outside Envoy Gateway's published range, kept while it passes), Gateway API v1.6.1 standard channel, and Envoy Gateway v1.9.3 | Accepted |
 | [D31](docs/adr/0031-reach-a-gateway-through-its-status-address-and-a-port-forward.md) | `GatewayController.Gateway(ref)` resolves the Gateway's status `IPAddress` to exactly one ClusterIP Service and opens one loopback port-forward per listener port; the dialer ignores the URL host and re-forwards the same Service once within `forwardTimeout`; no `sigs.k8s.io/gateway-api` dependency | Accepted |
+| [D32](docs/adr/0032-namespaced-refs-and-delete-for-referencegrant.md) | `WaitReady` and `Forward` take `"namespace/name"` (bare name still means `default`); `Harness.Delete(dir)` removes manifests in reverse Apply order until each GET is `NotFound`; G02 proves ReferenceGrant deny, grant, allow, and revoke without a `sigs.k8s.io/gateway-api` dependency | Accepted |
 
 **Clarification:** The Kubernetes **Gateway API is an API specification**, not a built-in gateway data plane. Using a “native Gateway API” does not remove the need for a controller/proxy. Envoy Gateway is the initial default implementation.
 
@@ -492,7 +493,7 @@ The **priority** of a profile is distinct from exact version numbering; do not e
 | S0 — Foundation | Small Go module, local test runner and testability seams | Fast unit tests, Docker prereq detection, documented pinned toolchain | Done (#1, #2) |
 | S1 — Owned lifecycle | Create and dispose of a Kind cluster safely | Partial failures, cancellation, double cleanup, deadline and leak tests | Done (#1) |
 | S2 — M01 vertical slice | Orders + PostgreSQL + migrations | One reproducible end-to-end test; negative migration scenario; diagnostics | Done (#3, #4), accepted |
-| S3 — Gateway API | Envoy Gateway standard profile | G01/G02/G03, resource status and data-plane evidence | In progress (slice plan below) |
+| S3 — Gateway API | Envoy Gateway standard profile | G01/G02/G03, resource status and data-plane evidence | In progress (G01 and G02 landed; G03 next) |
 | S4 — Agentgateway | Kubernetes-native MCP profiles | A01/A02/A03 with deterministic tool servers and identities | Proposed |
 | S5 — Istio | East-west networking profile | I01/I02/I03 with explicit traffic-origin checks | Proposed |
 | S6 — Agent Router | Envoy AI routing profile | R01/R02/R03 with local mock providers and Redis | Proposed |
@@ -572,6 +573,12 @@ Measured with `examples/gateway/setuplines` and `examples/gateway/compare.sh`, o
 The time gap is inside the run-to-run ranges. Totals match the slice 0 end-to-end window (~53 to 56s). Cluster create, profile install, and Programmed still dominate the wall clock. The harness cuts setup code by about nine tenths at no measurable time cost, so the slice 2 handle is accepted and G02 can build on it.
 
 Cost rule after these numbers: image pulls and controller startup still do not dominate over create. S3 keeps one cluster per test. Slice 5 (image preload) stays gated until a later screen shows pulls as the limiter.
+
+### S3 slice 3 result: accept
+
+`WaitReady` and `Forward` take `"namespace/name"`. `Harness.Delete(dir)` removes manifests in reverse Apply order until each GET is `NotFound` (D32). `examples/gateway` `TestG02ReferenceGrant` proves deny → grant Apply → allow → grant Delete → deny through `AwaitRoute`, `AwaitResponse`, and a payments request counter read over `Forward("payments/payments", 80)`. `TestG02DeniedRouteExplainsItself` expects `RouteReady` to fail with `route shop/pay` and `RefNotPermitted` in the existing evidence text.
+
+One Kind drive on Docker Desktop (linux/arm64) passed both tests (`TestG02ReferenceGrant` 57.4s, `TestG02DeniedRouteExplainsItself` 113.2s) with `cleanup=succeeded remaining=0` and `kubeharness leaks: 0` after the drive. A 20-run screen of `TestG02ReferenceGrant` alone passed every run (`pass=20 fail=0 leaked_runs=0`). The slice is accepted. G03 is next.
 
 ## 11. Design risks, trade-offs and mitigations
 

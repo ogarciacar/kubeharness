@@ -158,8 +158,11 @@ func (g *Gateway) Client() *http.Client {
 // AwaitRoute waits until the HTTPRoute named ref ("[namespace/]name", default
 // "default") has status from this Gateway's controller, for this Gateway, for
 // the route's current generation, and check accepts that status. Status
-// written for an earlier generation never reaches check, so AwaitRoute after
-// an Apply that changed the route waits for the change.
+// written for an earlier generation never reaches check.
+//
+// Once the status matches the route generation, check is the only goal.
+// Applying or deleting a ReferenceGrant does not change the route generation.
+// The next AwaitRoute still polls until its check accepts the new conditions.
 //
 // A route that does not exist, has no parentRef to this Gateway, or has two
 // status parents for this Gateway and this controller, fails at once.
@@ -250,15 +253,6 @@ func routeStatus(cs gateway.Conditions) RouteStatus {
 		return Condition{Status: c.Status, Reason: c.Reason, Message: c.Message}
 	}
 	return RouteStatus{Accepted: pick("Accepted"), ResolvedRefs: pick("ResolvedRefs"), fromWait: true}
-}
-
-func (h *Harness) ref(kind, s string) kube.Ref {
-	h.t.Helper()
-	r, err := kube.ParseRef(s, kube.DefaultNamespace)
-	if err != nil {
-		h.t.Fatalf("kubeharness: %s %q: %v", kind, s, err)
-	}
-	return r
 }
 
 func controllerRefs(ds []profile.Deployment) []kube.Ref {
