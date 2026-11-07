@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Usage: hack/screen.sh [runs] [go test -run pattern]
+# Usage: hack/screen.sh [runs] [go test -run pattern] [module dir]
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
 runs=${1:-20}
 pattern=${2:-.}
+moddir=${3:-.}
 if [[ ! $runs =~ ^[1-9][0-9]*$ ]]; then
-  echo "usage: hack/screen.sh [runs >= 1] [go test -run pattern]" >&2
+  echo "usage: hack/screen.sh [runs >= 1] [go test -run pattern] [module dir]" >&2
   exit 2
 fi
 logdir=$(mktemp -d)
@@ -25,7 +26,7 @@ for i in $(seq 1 "$runs"); do
   log="$logdir/run-$i.log"
   before=$(kh_clusters)
   listed_before=$?
-  go test -race -tags e2e -count=1 -timeout 20m -v -run "$pattern" ./... >"$log" 2>&1
+  go -C "$moddir" test -race -tags e2e -count=1 -timeout 20m -v -run "$pattern" ./... >"$log" 2>&1
   tests=$?
   healthy=$(grep -o 'phase=ready cause=ok cleanup=succeeded remaining=0 create=[^ ]* ready=[^ ]*' "$log" | head -1 | cut -d' ' -f5-)
   if [[ $tests -ne 0 ]]; then

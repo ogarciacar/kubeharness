@@ -93,7 +93,7 @@ Every version is pinned: Gateway API v1.6.1 standard channel, Envoy Gateway v1.9
 kubeharness cluster=kh-7630e8a319a4-1 phase=ready cause=ok cleanup=succeeded remaining=0 create=10.7s ready=17.4s delete=390ms profile=gateway-api install=15.7s
 ```
 
-`gc.Gateway(ref)` waits until the Gateway is Programmed, resolves its status address to one ClusterIP Service, and opens a loopback port-forward per listener port. `Client`, `AwaitRoute`, and `AwaitResponse` send real HTTP through that path. [`examples/gateway`](examples/gateway) runs G01 (host and path routing) and G02 (cross-namespace ReferenceGrant deny, grant, allow, and revoke with `Delete`).
+`gc.Gateway(ref)` waits until the Gateway is Programmed, resolves its status address to one ClusterIP Service, and opens a loopback port-forward per listener port. `Client`, `AwaitRoute`, and `AwaitResponse` send real HTTP through that path. [`examples/gateway`](examples/gateway) runs G01 (host and path routing), G02 (cross-namespace ReferenceGrant deny, grant, allow, and revoke with `Delete`), and G03 (live HTTPRoute weight flip under traffic with `AwaitRoute` / `AwaitResponse` and a hold-window ledger).
 
 ### Example: Orders and PostgreSQL (M01)
 
@@ -183,6 +183,7 @@ Each profile has three candidate experiments documented with hypotheses, observa
 
 - **M01:** Provision Orders + PostgreSQL, run migrations, create an order, verify persistence.
 - **G02:** Verify cross-namespace Gateway API routing fails without `ReferenceGrant` and works when granted.
+- **G03:** Flip an HTTPRoute 100/0 ↔ 0/100 under live traffic; status and data-plane clocks converge, then a hold window stays on the selected backend.
 - **A02:** Verify an authenticated MCP client sees and invokes only its authorized tools.
 - **I01:** Verify permitted service-to-service calls succeed and unauthorized service identities are denied.
 - **R02:** Force a primary mock LLM backend to fail and verify configured Agent Router fallback.

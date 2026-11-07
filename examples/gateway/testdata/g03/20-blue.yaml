@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blue
+  namespace: shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: blue}
+  template:
+    metadata:
+      labels: {app: blue}
+    spec:
+      containers:
+        - name: backend
+          image: kubeharness.local/gateway-backend:test
+          imagePullPolicy: Never
+          env: [{name: BACKEND_NAME, value: blue}]
+          ports: [{name: http, containerPort: 8080}]
+          readinessProbe:
+            httpGet: {path: /, port: http}
+            periodSeconds: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blue
+  namespace: shop
+spec:
+  selector: {app: blue}
+  ports: [{port: 80, targetPort: http}]
