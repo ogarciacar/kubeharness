@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 
 	"github.com/ogarciacar/kubeharness"
 )
@@ -325,28 +324,22 @@ func readCount(t *testing.T, url string) reading {
 
 func paymentsReplicas(t *testing.T) int {
 	t.Helper()
-	data, err := os.ReadFile("testdata/g02/21-payments.yaml")
+	objs, err := readManifests("testdata/g02")
 	if err != nil {
 		t.Fatal(err)
 	}
-	dec := utilyaml.NewYAMLOrJSONDecoder(bytes.NewReader(data), 4096)
-	for {
-		var u unstructured.Unstructured
-		if err := dec.Decode(&u); err == io.EOF {
-			break
-		} else if err != nil {
-			t.Fatalf("decode payments manifest: %v", err)
-		}
+	for _, u := range objs {
 		if u.GetKind() != "Deployment" || u.GetName() != "payments" {
 			continue
 		}
-		replicas, found, err := unstructured.NestedInt64(u.Object, "spec", "replicas")
-		if err != nil || !found {
+		v, found, err := unstructured.NestedFieldNoCopy(u.Object, "spec", "replicas")
+		n, ok := yamlInt(v)
+		if err != nil || !found || !ok {
 			t.Fatal("payments Deployment has no spec.replicas")
 		}
-		return int(replicas)
+		return int(n)
 	}
-	t.Fatal("payments Deployment not found in testdata/g02/21-payments.yaml")
+	t.Fatal("payments Deployment not found in testdata/g02")
 	return 0
 }
 

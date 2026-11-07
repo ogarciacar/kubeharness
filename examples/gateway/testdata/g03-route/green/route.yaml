@@ -1,0 +1,15 @@
+# Every request on green. testdata/g03-route/blue is this route with the
+# weights swapped; loadFlips fails if the two differ anywhere else.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: checkout
+  namespace: shop
+spec:
+  parentRefs: [{name: edge}]
+  hostnames: [shop.example]
+  rules:
+    - matches: [{path: {type: PathPrefix, value: /checkout}}]
+      backendRefs:
+        - {name: blue, port: 80, weight: 0}
+        - {name: green, port: 80, weight: 100}
