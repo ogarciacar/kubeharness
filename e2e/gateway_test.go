@@ -128,7 +128,7 @@ func TestInstallGatewayFailureCarriesControllerEvidence(t *testing.T) {
 	}
 	for _, want := range []string{
 		"install gateway gateway-api failed after",
-		"deployment envoy-gateway not available",
+		"deployment envoy-gateway-system/envoy-gateway not available",
 		"pod envoy-gateway-",
 		"sha256:dead0000",
 		"stopped early so cleanup fits before go test -timeout",

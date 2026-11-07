@@ -63,6 +63,11 @@ const (
 	evidenceTimeout = 10 * time.Second
 )
 
+// deleteTimeout bounds Delete, including the poll until each object is gone.
+// A ReferenceGrant returns on the first absent GET. A workload directory can
+// spend a pod grace period in the poll. op still clips the deadline to opsEndBy.
+const deleteTimeout = time.Minute
+
 // New creates a Kind cluster owned by t and waits until it accepts workloads.
 // A setup failure fails the test immediately. Cleanup always runs, and a
 // cleanup failure is reported as its own test error.
@@ -209,15 +214,47 @@ func (h *Harness) apply(dir string, objs []*unstructured.Unstructured) {
 	}
 }
 
-// WaitReady waits until the Deployment named deployment in "default" is rolled
-// out and every replica is available. On failure the test stops with the last
-// observed rollout state and the state and logs of the Deployment's Pods.
-func (h *Harness) WaitReady(deployment string) {
+// Delete removes every manifest in dir and waits until each object is gone.
+// Order is the reverse of Apply. NotFound is success, so a second Delete of
+// the same directory is done. A kind the API server does not serve is already
+// gone, and Delete skips it instead of waiting for the kind to appear.
+// Gone means GET returns NotFound. Propagation is background.
+// Namespaced objects with an empty namespace are read from "default".
+// On timeout the test stops with each remaining object and its finalizers.
+// Pass a directory that contains only the objects you mean to remove.
+// A Namespace in that directory waits on the Namespace finalizers.
+func (h *Harness) Delete(dir string) {
 	h.t.Helper()
+	objs := h.manifests(dir)
+	ctx, _, cancel := h.op(deleteTimeout)
+	defer cancel()
+	if err := kube.Delete(ctx, h.rest, objs); err != nil {
+		h.fatalf(ctx, "kubeharness: delete %s: %v", dir, err)
+	}
+}
+
+// ref parses a user ref and fails the test on a bad string.
+// It is the only parse. WaitReady, Forward, and the gateway methods call it.
+func (h *Harness) ref(kind, s string) kube.Ref {
+	h.t.Helper()
+	r, err := kube.ParseRef(s, kube.DefaultNamespace)
+	if err != nil {
+		h.t.Fatalf("kubeharness: %s %q: %v", kind, s, err)
+	}
+	return r
+}
+
+// WaitReady waits until the Deployment named ref is rolled out and every
+// replica is available. ref is "name" in the default namespace, or
+// "namespace/name". On failure the test stops with the last observed rollout
+// state and the state and logs of the Deployment's Pods.
+func (h *Harness) WaitReady(ref string) {
+	h.t.Helper()
+	r := h.ref("deployment", ref)
 	ctx, evidence, cancel := h.op(readyTimeout)
 	defer cancel()
-	if err := kube.WaitDeployment(ctx, evidence, h.client, kube.DefaultNamespace, deployment); err != nil {
-		h.fatalf(ctx, "kubeharness: wait ready: %v", err)
+	if err := kube.WaitDeployment(ctx, evidence, h.client, r.Namespace, r.Name); err != nil {
+		h.fatalf(ctx, "kubeharness: wait ready %s: %v", r, err)
 	}
 }
 
@@ -243,21 +280,22 @@ func (h *Harness) RunJob(dir string) {
 	}
 }
 
-// Forward forwards a local port to port of the Service named service in
-// "default" and returns the local address, such as 127.0.0.1:53017. Use it as
-// a TCP address or as "http://" + address. The forward stops when the test
-// ends.
-func (h *Harness) Forward(service string, port int) string {
+// Forward forwards a local port to port of the Service named ref and returns
+// the local address, such as 127.0.0.1:53017. ref is "name" in the default
+// namespace, or "namespace/name". Use the address as a TCP address or as
+// "http://" plus the address. The forward stops when the test ends.
+func (h *Harness) Forward(ref string, port int) string {
 	h.t.Helper()
+	r := h.ref("service", ref)
 	ctx, _, cancel := h.op(forwardTimeout)
 	defer cancel()
-	f, err := kube.StartForward(ctx, h.rest, h.client, kube.DefaultNamespace, service, int32(port))
+	f, err := kube.StartForward(ctx, h.rest, h.client, r.Namespace, r.Name, int32(port))
 	if err != nil {
-		h.fatalf(ctx, "kubeharness: forward %s:%d: %v", service, port, err)
+		h.fatalf(ctx, "kubeharness: forward %s:%d: %v", r, port, err)
 	}
 	h.t.Cleanup(func() {
 		if err := f.Close(); err != nil {
-			h.t.Logf("kubeharness: forward %s:%d ended with: %v", service, port, err)
+			h.t.Logf("kubeharness: forward %s:%d ended with: %v", r, port, err)
 		}
 	})
 	return f.Addr
