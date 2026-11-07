@@ -80,6 +80,7 @@ func jobState(j *batchv1.Job) Progress {
 // WaitDeployment polls until the Deployment is rolled out and available.
 // When it fails or ctx ends, the error carries the last observation and the
 // state of the Deployment's Pods, gathered within evidenceCtx.
+// The name in the error is namespace/name.
 func WaitDeployment(ctx, evidenceCtx context.Context, client kubernetes.Interface, namespace, name string) error {
 	last := "not observed yet"
 	var seen *appsv1.Deployment
@@ -93,7 +94,7 @@ func WaitDeployment(ctx, evidenceCtx context.Context, client kubernetes.Interfac
 			case Done:
 				return nil
 			case Failed:
-				return fmt.Errorf("deployment %s failed: %s%s%s", name, last, deploymentConditions(d), podEvidence(evidenceCtx, client, namespace, d.Spec.Selector))
+				return fmt.Errorf("deployment %s/%s failed: %s%s%s", namespace, name, last, deploymentConditions(d), podEvidence(evidenceCtx, client, namespace, d.Spec.Selector))
 			}
 		} else if ctx.Err() == nil {
 			last = err.Error()
@@ -104,7 +105,7 @@ func WaitDeployment(ctx, evidenceCtx context.Context, client kubernetes.Interfac
 			if seen != nil {
 				evidence = deploymentConditions(seen) + podEvidence(evidenceCtx, client, namespace, seen.Spec.Selector)
 			}
-			return fmt.Errorf("deployment %s not available: %w; last observed: %s%s", name, ctx.Err(), last, evidence)
+			return fmt.Errorf("deployment %s/%s not available: %w; last observed: %s%s", namespace, name, ctx.Err(), last, evidence)
 		case <-time.After(PollInterval):
 		}
 	}

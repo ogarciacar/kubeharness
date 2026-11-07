@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -111,6 +112,49 @@ func DecodeManifests(source string, data []byte) ([]*unstructured.Unstructured, 
 	}
 }
 
+// errNotServed means the API server does not serve this object's kind.
+// Delete treats that as already gone. Apply waits for the kind, so it never
+// returns this error.
+var errNotServed = errors.New("kind not served")
+
+// namespaceOrDefault is the only empty-namespace rule.
+func namespaceOrDefault(ns string) string {
+	if ns == "" {
+		return DefaultNamespace
+	}
+	return ns
+}
+
+// bind maps obj and, for a namespaced kind, writes namespaceOrDefault onto obj.
+// A CRD earlier in the same Apply is what makes the next kind mappable, so
+// this runs at that object's write.
+//
+// With waitForKind false, the first NoMatch error is errNotServed.
+func bind(ctx context.Context, cfg *rest.Config, mapper *meta.RESTMapper, client dynamic.Interface, obj *unstructured.Unstructured, waitForKind bool) (dynamic.ResourceInterface, ObjectRef, error) {
+	gvk := obj.GroupVersionKind()
+	var mapping *meta.RESTMapping
+	var err error
+	if waitForKind {
+		mapping, err = restMapping(ctx, cfg, mapper, gvk)
+	} else {
+		mapping, err = (*mapper).RESTMapping(gvk.GroupKind(), gvk.Version)
+		if meta.IsNoMatchError(err) {
+			return nil, ObjectRef{}, errNotServed
+		}
+	}
+	if err != nil {
+		return nil, ObjectRef{}, err
+	}
+	ref := ObjectRef{GVK: gvk, Name: obj.GetName()}
+	res := client.Resource(mapping.Resource)
+	if mapping.Scope.Name() != meta.RESTScopeNameNamespace {
+		return res, ref, nil
+	}
+	obj.SetNamespace(namespaceOrDefault(obj.GetNamespace()))
+	ref.Namespace = obj.GetNamespace()
+	return res.Namespace(ref.Namespace), ref, nil
+}
+
 // Apply server-side applies objs in order and returns what it applied.
 // Namespaced objects without a namespace go to DefaultNamespace.
 func Apply(ctx context.Context, cfg *rest.Config, objs []*unstructured.Unstructured) ([]ObjectRef, error) {
@@ -124,19 +168,9 @@ func Apply(ctx context.Context, cfg *rest.Config, objs []*unstructured.Unstructu
 	}
 	var applied []ObjectRef
 	for _, obj := range objs {
-		gvk := obj.GroupVersionKind()
-		mapping, err := restMapping(ctx, cfg, &mapper, gvk)
+		res, ref, err := bind(ctx, cfg, &mapper, client, obj, true)
 		if err != nil {
-			return applied, fmt.Errorf("%s %s: %w", gvk.Kind, obj.GetName(), err)
-		}
-		var res dynamic.ResourceInterface = client.Resource(mapping.Resource)
-		ref := ObjectRef{GVK: gvk, Name: obj.GetName()}
-		if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
-			if obj.GetNamespace() == "" {
-				obj.SetNamespace(DefaultNamespace)
-			}
-			ref.Namespace = obj.GetNamespace()
-			res = client.Resource(mapping.Resource).Namespace(ref.Namespace)
+			return applied, fmt.Errorf("%s %s: %w", obj.GroupVersionKind().Kind, obj.GetName(), err)
 		}
 		data, err := obj.MarshalJSON()
 		if err != nil {
@@ -148,6 +182,82 @@ func Apply(ctx context.Context, cfg *rest.Config, objs []*unstructured.Unstructu
 		applied = append(applied, ref)
 	}
 	return applied, nil
+}
+
+// Delete removes objs from last to first and waits until each GET returns
+// NotFound. Propagation is background so a deadline error can name
+// metadata.finalizers.
+func Delete(ctx context.Context, cfg *rest.Config, objs []*unstructured.Unstructured) error {
+	mapper, err := newMapper(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	client, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+	return deleteEach(ctx, cfg, &mapper, client, objs)
+}
+
+// The index walk leaves the caller's slice in its original order.
+func deleteEach(ctx context.Context, cfg *rest.Config, mapper *meta.RESTMapper, client dynamic.Interface, objs []*unstructured.Unstructured) error {
+	for i := len(objs) - 1; i >= 0; i-- {
+		res, ref, err := bind(ctx, cfg, mapper, client, objs[i], false)
+		if errors.Is(err, errNotServed) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		pol := metav1.DeletePropagationBackground
+		err = res.Delete(ctx, ref.Name, metav1.DeleteOptions{PropagationPolicy: &pol})
+		if apierrors.IsNotFound(err) {
+			continue
+		}
+		if err != nil {
+			got, gerr := res.Get(ctx, ref.Name, metav1.GetOptions{})
+			if apierrors.IsNotFound(gerr) {
+				continue
+			}
+			// The object is already deleting, so the poll waits for absence
+			// instead of failing this retry.
+			if gerr != nil || got.GetDeletionTimestamp().IsZero() {
+				return fmt.Errorf("delete %s: %w", ref, err)
+			}
+		}
+		if err := waitAbsent(ctx, res, ref); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// waitAbsent polls GET until NotFound.
+// The confirming GET after ctx ends uses a context that outlives ctx, so a
+// NotFound that arrives with the deadline still counts as gone.
+func waitAbsent(ctx context.Context, res dynamic.ResourceInterface, ref ObjectRef) error {
+	var finalizers []string
+	for {
+		got, err := res.Get(ctx, ref.Name, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		if err == nil {
+			finalizers = got.GetFinalizers()
+		}
+		select {
+		case <-ctx.Done():
+			got, err = res.Get(context.WithoutCancel(ctx), ref.Name, metav1.GetOptions{})
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			if err == nil {
+				finalizers = got.GetFinalizers()
+			}
+			return fmt.Errorf("%s still present, finalizers [%s]: %w", ref, strings.Join(finalizers, " "), ctx.Err())
+		case <-time.After(PollInterval):
+		}
+	}
 }
 
 func ptr[T any](v T) *T { return &v }
@@ -192,11 +302,7 @@ func OnlyJob(objs []*unstructured.Unstructured) (ObjectRef, error) {
 	var jobs []ObjectRef
 	for _, o := range objs {
 		if gvk := o.GroupVersionKind(); gvk.Group == "batch" && gvk.Kind == "Job" {
-			ns := o.GetNamespace()
-			if ns == "" {
-				ns = DefaultNamespace
-			}
-			jobs = append(jobs, ObjectRef{GVK: gvk, Namespace: ns, Name: o.GetName()})
+			jobs = append(jobs, ObjectRef{GVK: gvk, Namespace: namespaceOrDefault(o.GetNamespace()), Name: o.GetName()})
 		}
 	}
 	if len(jobs) != 1 {
