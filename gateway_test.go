@@ -2,7 +2,9 @@ package kubeharness
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -12,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -20,6 +24,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
+	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/ogarciacar/kubeharness/internal/gateway"
 	"github.com/ogarciacar/kubeharness/internal/kube"
@@ -266,6 +271,105 @@ func TestAwaitRouteRejectsABadRef(t *testing.T) {
 	}
 }
 
+func TestWaitReadyRejectsABadRef(t *testing.T) {
+	tb := &fakeTB{dir: t.TempDir()}
+	harnessWithInstall(tb, &fakeInstall{})(func(h *Harness) {
+		h.WaitReady("payments/payments/extra")
+	})
+	if len(tb.fatals) != 1 || !strings.Contains(tb.fatals[0], `deployment "payments/payments/extra"`) {
+		t.Fatalf("fatals = %q", tb.fatals)
+	}
+}
+
+func TestForwardRejectsABadRef(t *testing.T) {
+	tb := &fakeTB{dir: t.TempDir()}
+	harnessWithInstall(tb, &fakeInstall{})(func(h *Harness) {
+		h.Forward("payments/payments/extra", 80)
+	})
+	if len(tb.fatals) != 1 || !strings.Contains(tb.fatals[0], `service "payments/payments/extra"`) {
+		t.Fatalf("fatals = %q", tb.fatals)
+	}
+}
+
+func TestWaitReadyGetsTheNamespacedDeployment(t *testing.T) {
+	replicas := int32(1)
+	deploy := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "payments", Name: "payments", Generation: 1},
+		Spec:       appsv1.DeploymentSpec{Replicas: &replicas},
+		Status: appsv1.DeploymentStatus{
+			ObservedGeneration: 1,
+			Replicas:           1,
+			UpdatedReplicas:    1,
+			AvailableReplicas:  1,
+		},
+	}
+	client := fake.NewClientset(deploy)
+	tb := awaitStopTB(t)
+	harnessWithInstall(tb, &fakeInstall{})(func(h *Harness) {
+		h.client = client
+		h.WaitReady("payments/payments")
+	})
+	if len(tb.fatals) != 0 {
+		t.Fatalf("fatals = %q", tb.fatals)
+	}
+	var got []string
+	for _, a := range client.Actions() {
+		if a.GetVerb() != "get" || a.GetResource().Resource != "deployments" {
+			continue
+		}
+		g := a.(k8stesting.GetAction)
+		got = append(got, g.GetNamespace()+"/"+g.GetName())
+	}
+	if len(got) != 1 || got[0] != "payments/payments" {
+		t.Fatalf("deployment GETs = %q", got)
+	}
+}
+
+func TestAwaitRouteKeepsPollingWhenGenerationAlreadyMatches(t *testing.T) {
+	tb := awaitStopTB(t)
+	route := settledRoute(EnvoyGateway().r.ControllerName)
+	parents := route.Object["status"].(map[string]any)["parents"].([]any)
+	parent := parents[0].(map[string]any)
+	for _, raw := range parent["conditions"].([]any) {
+		c := raw.(map[string]any)
+		if c["type"] != "ResolvedRefs" {
+			continue
+		}
+		c["status"] = "False"
+		c["reason"] = "RefNotPermitted"
+		c["message"] = "cross-namespace backend not permitted"
+	}
+	dyn := gatewayDynamic(t, route)
+	gvr := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "httproutes"}
+	before, err := dyn.Resource(gvr).Namespace("default").Get(context.Background(), "shop", metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	harnessWithInstall(tb, &fakeInstall{})(func(h *Harness) {
+		useGateway(h, dyn).AwaitRoute("shop", func(s RouteStatus) error {
+			calls++
+			if s.ResolvedRefs.Status != "False" || s.ResolvedRefs.Reason != "RefNotPermitted" {
+				return fmt.Errorf("ResolvedRefs=%s reason=%s", s.ResolvedRefs.Status, s.ResolvedRefs.Reason)
+			}
+			if calls < 4 {
+				return errors.New("still denied")
+			}
+			return nil
+		})
+	})
+	if calls != 4 || len(tb.fatals) != 0 {
+		t.Fatalf("calls = %d fatals = %q", calls, tb.fatals)
+	}
+	after, err := dyn.Resource(gvr).Namespace("default").Get(context.Background(), "shop", metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.GetGeneration() != 1 || after.GetGeneration() != 1 || routeStatusStamp(before) != routeStatusStamp(after) {
+		t.Fatalf("route changed from generation %d status %s to generation %d status %s", before.GetGeneration(), routeStatusStamp(before), after.GetGeneration(), routeStatusStamp(after))
+	}
+}
+
 func TestAwaitResponseStopsWhenTheBodyCannotBeReplayed(t *testing.T) {
 	tb := awaitStopTB(t)
 	dyn := gatewayDynamic(t, nil)
@@ -375,6 +479,12 @@ func useGateway(h *Harness, dyn dynamic.Interface) *Gateway {
 			Ports:   []int32{80},
 		},
 	}
+}
+
+func routeStatusStamp(u *unstructured.Unstructured) string {
+	status, _, _ := unstructured.NestedFieldCopy(u.Object, "status")
+	b, _ := json.Marshal(status)
+	return string(b)
 }
 
 func settledRoute(controller string) *unstructured.Unstructured {

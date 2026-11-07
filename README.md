@@ -40,14 +40,15 @@ kubeharness cluster=kh-443ca88f073e-10066 phase=ready cause=ok cleanup=succeeded
 
 ### Run workloads
 
-`Harness` has five methods for putting workloads on the cluster. Each one fails the test with evidence when it can't finish: the last state it observed, plus the Pods' container states and log tails.
+`Harness` has six methods for putting workloads on the cluster. Each one fails the test with evidence when it can't finish: the last state it observed, plus the Pods' container states and log tails.
 
 | Method | What it does |
 | --- | --- |
 | `h.Apply(dir)` | Server-side applies every `.yaml` and `.yml` file in `dir`, in file-name order. Objects without a namespace go to `default`. |
-| `h.WaitReady(name)` | Waits until Deployment `name` is rolled out and every replica is available. |
+| `h.Delete(dir)` | Removes every manifest in `dir` in the reverse of Apply order and waits until each object is gone. `NotFound` is success. |
+| `h.WaitReady(ref)` | Waits until the Deployment named `ref` is rolled out and every replica is available. `ref` is `name` in `default`, or `namespace/name`. |
 | `h.RunJob(dir)` | Applies `dir`, which must hold exactly one Job, and waits for that Job to complete. |
-| `h.Forward(service, port)` | Forwards a local port to a Service port and returns the local address, such as `127.0.0.1:53017`. Use it as a TCP address or prefix `http://`. |
+| `h.Forward(ref, port)` | Forwards a local port to a Service port and returns the local address, such as `127.0.0.1:53017`. `ref` is `name` in `default`, or `namespace/name`. Use it as a TCP address or prefix `http://`. |
 | `h.LoadImage(ref)` | Copies an image you built into the cluster, for manifests that use `imagePullPolicy: Never`. |
 
 Call these methods from the test that created `h`. They fail that test, and a forward stops when that test ends.
@@ -79,8 +80,11 @@ A cleanup that fails or can't be confirmed fails the test and prints a `docker r
 
 ```go
 h := kubeharness.New(t)
-h.InstallGateway(kubeharness.EnvoyGateway())
+gc := h.InstallGateway(kubeharness.EnvoyGateway())
 h.Apply("testdata/gateway") // a Gateway and HTTPRoutes with gatewayClassName: kubeharness
+gw := gc.Gateway("edge")
+gw.AwaitRoute("shop", kubeharness.RouteReady)
+resp, err := gw.Client().Get("http://shop.example/orders")
 ```
 
 Every version is pinned: Gateway API v1.6.1 standard channel, Envoy Gateway v1.9.3, and each image by digest. The manifests are embedded in the module, so the install needs no Helm and no network beyond the images kubelet pulls. It has 4 minutes, and on failure the test stops with the CRDs that are not established, the controller's Pod states and logs, or the GatewayClass conditions. A second call with the same profile does nothing; a different profile fails the test. The report line gains the profile and the install time:
@@ -89,7 +93,7 @@ Every version is pinned: Gateway API v1.6.1 standard channel, Envoy Gateway v1.9
 kubeharness cluster=kh-7630e8a319a4-1 phase=ready cause=ok cleanup=succeeded remaining=0 create=10.7s ready=17.4s delete=390ms profile=gateway-api install=15.7s
 ```
 
-Sending requests through a Gateway from the test (`gc.Gateway("edge").Client()`) is the next slice and does not exist yet.
+`gc.Gateway(ref)` waits until the Gateway is Programmed, resolves its status address to one ClusterIP Service, and opens a loopback port-forward per listener port. `Client`, `AwaitRoute`, and `AwaitResponse` send real HTTP through that path. [`examples/gateway`](examples/gateway) runs G01 (host and path routing) and G02 (cross-namespace ReferenceGrant deny, grant, allow, and revoke with `Delete`).
 
 ### Example: Orders and PostgreSQL (M01)
 
@@ -115,8 +119,6 @@ A unit test cannot prove that a real service works behind a Kubernetes Gateway, 
 ## Intended experience
 
 ```go
-// API SKETCH. New, InstallGateway, Apply, WaitReady, and RunJob exist today.
-// The calls marked "planned" are designed (S3 slices 2 to 4) but not built.
 func TestCreateOrder(t *testing.T) {
     h := kubeharness.New(t)
     gc := h.InstallGateway(kubeharness.EnvoyGateway())
@@ -127,9 +129,9 @@ func TestCreateOrder(t *testing.T) {
     h.Apply("testdata/orders") // the Orders service, a Gateway "edge", and its HTTPRoute
     h.WaitReady("orders")
 
-    gw := gc.Gateway("edge")                        // planned: Programmed, address, port-forward
-    gw.AwaitRoute("orders", kubeharness.RouteReady) // planned
-    resp, err := gw.Client().Post("http://shop.example/orders", "application/json", orderFixture) // planned
+    gw := gc.Gateway("edge")
+    gw.AwaitRoute("orders", kubeharness.RouteReady)
+    resp, err := gw.Client().Post("http://shop.example/orders", "application/json", orderFixture)
     if err != nil {
         t.Fatal(err)
     }
@@ -142,7 +144,7 @@ func TestCreateOrder(t *testing.T) {
 }
 ```
 
-The final API, error handling, ownership model, and cleanup contract will be designed and validated incrementally.
+G03 (live traffic splits) is the next Gateway experiment. The ownership model and cleanup contract stay as in S1 and S2.
 
 ## Conceptual execution flow
 

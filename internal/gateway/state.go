@@ -201,6 +201,9 @@ func ParseRoute(u *unstructured.Unstructured) (Route, error) {
 // StatusFor picks what controller wrote for this route under gw, and says
 // whether it may reach a caller's check. It is the only settled-status rule.
 //
+// Done means that parent's conditions were written for the route generation.
+// Done does not mean the caller's check will accept them.
+//
 //   - Stop when the route has no parentRef to gw. Waiting cannot fix that.
 //   - Stop when two status.parents entries match gw and controller. Merging
 //     them would invent a status the controller did not write as one parent.
