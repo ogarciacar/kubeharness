@@ -1,0 +1,28 @@
+# Gateway and HTTPRoute share namespace shop, so a missing grant is
+# RefNotPermitted on the backend, not NotAllowedByListeners.
+# One parentRef. /orders stays in shop. /payments crosses to payments.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: edge
+  namespace: shop
+spec:
+  gatewayClassName: kubeharness
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: pay
+  namespace: shop
+spec:
+  parentRefs: [{name: edge}]
+  hostnames: [shop.example]
+  rules:
+    - matches: [{path: {type: PathPrefix, value: /orders}}]
+      backendRefs: [{name: orders, port: 80}]
+    - matches: [{path: {type: PathPrefix, value: /payments}}]
+      backendRefs: [{name: payments, namespace: payments, port: 80}]
