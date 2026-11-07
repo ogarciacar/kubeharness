@@ -1,6 +1,3 @@
-// No build tag: this file runs in the plain `go test ./...` CI step, so the
-// fixture guard and the ledger judge are checked without a cluster. The e2e
-// test in g03_test.go uses the same functions.
 package gateway_test
 
 import (
@@ -23,32 +20,20 @@ import (
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 )
 
-// g03FlipOrder names, in order, the testdata/g03-route directories
-// TestG03WeightFlip applies. The first creates the route; each later one
-// replaces it. Names are backend names: each directory's route puts weight
-// 100 on the backend it is named for.
 var g03FlipOrder = []string{"blue", "green", "blue"}
 
 const g03RouteRoot = "testdata/g03-route"
 
 const (
-	// g03Hold is how long traffic runs after a flip is ready before the next
-	// Apply, and after the last flip before the ledger is judged.
-	g03Hold = 3 * time.Second
-	// g03MinHold is the fewest ledger requests a hold may contain. Fewer
-	// means the traffic goroutine stalled and an all-correct hold proves
-	// nothing.
-	g03MinHold = 20
+	g03Hold           = 3 * time.Second
+	g03MinHoldSamples = 20
 )
 
-// flip is one Apply of a route directory and the backend the route in it
-// selects. backend is read from the fixture, never written separately.
 type flip struct {
 	dir     string
 	backend string
 }
 
-// g03Flips is loadFlips over the committed fixtures, failing t on error.
 func g03Flips(t testing.TB) []flip {
 	t.Helper()
 	flips, err := loadFlips(g03RouteRoot, g03FlipOrder)
@@ -58,21 +43,6 @@ func g03Flips(t testing.TB) []flip {
 	return flips
 }
 
-// loadFlips reads root/<name>/ for each name in order and returns the flips.
-// It fails unless:
-//
-//   - each directory holds exactly one object, an HTTPRoute, and every
-//     directory names the same route (namespace/name);
-//   - the routes are equal once every spec.rules[].backendRefs[].weight is
-//     removed, so an SSA Force Apply of one never drops a field the other set;
-//   - each route puts weight 100 on exactly one backendRef, the one called
-//     name, and weight 0 on every other;
-//   - no two consecutive names are equal, so every Apply after the first
-//     changes the spec and bumps metadata.generation (the same-generation
-//     no-op AwaitRoute can't distinguish from success).
-//
-// Non-consecutive repeats (blue, green, blue) are allowed. Generation 3 has
-// the same spec as generation 1 but differs from the live generation 2.
 func loadFlips(root string, order []string) ([]flip, error) {
 	if len(order) == 0 {
 		return nil, fmt.Errorf("flip order is empty")
@@ -113,6 +83,7 @@ func loadFlips(root string, order []string) ([]flip, error) {
 			return nil, fmt.Errorf("%s and %s name different routes %s and %s", dirs[0], dirs[i], id, got)
 		}
 		bare := withoutWeights(r)
+		// An SSA Force Apply of one never drops a field the other set.
 		if !equality.Semantic.DeepEqual(bareFirst, bare) {
 			return nil, fmt.Errorf("%s and %s differ at %s", dirs[0], dirs[i], diffPath(bareFirst.Object, bare.Object))
 		}
@@ -120,10 +91,6 @@ func loadFlips(root string, order []string) ([]flip, error) {
 	return flips, nil
 }
 
-// selected returns the name of the one backendRef with weight 100 across all
-// rules of route, failing if any ref lacks a weight, has a weight other than
-// 0 or 100, or if not exactly one ref has 100. Weight must be present as an
-// integer (yamlInt); a missing weight is not treated as zero.
 func selected(route *unstructured.Unstructured) (string, error) {
 	rules, found, err := unstructured.NestedSlice(route.Object, "spec", "rules")
 	if err != nil || !found {
@@ -162,8 +129,6 @@ func selected(route *unstructured.Unstructured) (string, error) {
 	return picked, nil
 }
 
-// yamlInt accepts the number types the YAML decoder leaves in an
-// unstructured map (int, int64, float64). Missing or wrong type → false.
 func yamlInt(v any) (int64, bool) {
 	switch n := v.(type) {
 	case int:
@@ -177,8 +142,6 @@ func yamlInt(v any) (int64, bool) {
 	}
 }
 
-// withoutWeights returns a deep copy of route with every backendRef weight
-// removed. loadFlips compares these copies.
 func withoutWeights(route *unstructured.Unstructured) *unstructured.Unstructured {
 	out := route.DeepCopy()
 	// NestedSlice returns a copy. Delete on the live maps of this deep copy.
@@ -210,9 +173,6 @@ func withoutWeights(route *unstructured.Unstructured) *unstructured.Unstructured
 	return out
 }
 
-// readManifests decodes every .yaml/.yml file in dir in file-name order, as
-// Harness.Apply reads them. paymentsReplicas moves onto this helper so the
-// example has one YAML decode loop.
 func readManifests(dir string) ([]*unstructured.Unstructured, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -243,8 +203,6 @@ func readManifests(dir string) ([]*unstructured.Unstructured, error) {
 	return objs, nil
 }
 
-// decodeManifests parses YAML or JSON documents the way internal/kube.ReadManifests
-// does: empty documents are skipped, and a kind: List contributes its items.
 func decodeManifests(source string, data []byte) ([]*unstructured.Unstructured, error) {
 	var objs []*unstructured.Unstructured
 	dec := utilyaml.NewYAMLOrJSONDecoder(bytes.NewReader(data), 4096)
@@ -279,10 +237,6 @@ func decodeManifests(source string, data []byte) ([]*unstructured.Unstructured, 
 	}
 }
 
-// readBackend accepts a sample only when the status is 200 and the
-// X-Backend header equals the JSON backend field. Disagreement is an
-// error observation so it cannot extend a hold window. The body read stops
-// at 1 MiB. The caller closes resp.Body.
 func readBackend(resp *http.Response) (string, error) {
 	header := resp.Header.Get("X-Backend")
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
@@ -303,8 +257,6 @@ func readBackend(resp *http.Response) (string, error) {
 	return header, nil
 }
 
-// TestG03DirHasNoRoute fails if testdata/g03 contains an HTTPRoute or
-// ReferenceGrant. The route lives only under testdata/g03-route/<flip>/.
 func TestG03DirHasNoRoute(t *testing.T) {
 	objs, err := readManifests("testdata/g03")
 	if err != nil {
@@ -318,35 +270,28 @@ func TestG03DirHasNoRoute(t *testing.T) {
 	}
 }
 
-// sample is one request the traffic goroutine sent through the Gateway.
-// The goroutine is the only writer; it hands the slice over once, on stop.
 type sample struct {
-	sent    time.Time // before client.Do; requests are classified by send time
-	status  int       // 0 when Do returned an error
-	backend string    // X-Backend; "" when absent or on error
-	err     string    // transport error text, "" on a response
+	sent    time.Time
+	status  int
+	backend string
+	err     string
 }
 
-// mark is one flip as the test goroutine timed it. All three times come
-// from time.Now on the test goroutine, so they share a monotonic clock with
-// sample.sent.
 type mark struct {
-	to      string    // backend the flip selects (flip.backend)
-	applied time.Time // just before h.Apply
-	status  time.Time // AwaitRoute(RouteReady) returned: new generation acknowledged
-	ready   time.Time // AwaitResponse(servedBy(to)) returned: both clocks have seen the flip
+	to      string
+	applied time.Time
+	status  time.Time
+	ready   time.Time
 }
 
-// transition is what the ledger says about one flip after the first.
-// String renders the single "g03 flip" log line convergence.sh parses.
 type transition struct {
 	from, to  string
-	status    time.Duration // mark.status - mark.applied
-	dataplane time.Duration // sent of first request after which every request hit `to`, minus mark.applied
-	old, new  int           // requests in [applied, ready) served by from / to
-	errs      int           // requests in [applied, ready) that were not a 200 from from or to
-	switches  int           // backend changes among requests in [applied, ready), errors skipped
-	hold      int           // requests in [ready, next applied or end)
+	status    time.Duration
+	dataplane time.Duration
+	old, new  int
+	errs      int
+	switches  int
+	hold      int
 }
 
 func (tr transition) String() string {
@@ -354,20 +299,6 @@ func (tr transition) String() string {
 		tr.from, tr.to, tr.status.Seconds(), tr.dataplane.Seconds(), tr.old, tr.new, tr.errs, tr.switches, tr.hold)
 }
 
-// judge splits samples by marks and checks the G03 oracle. marks[0] is the
-// flip that created the route; traffic starts after marks[0].ready. For each
-// mark i the hold is [marks[i].ready, marks[i+1].applied), or up to end for
-// the last mark, and for i > 0 the transition window is
-// [marks[i].applied, marks[i].ready).
-//
-// It fails if any sample was sent before marks[0].ready, or if any hold has
-// fewer than g03MinHold samples or a sample that isn't a 200 from marks[i].to.
-// The error names the flip, the offset from ready, and what came back.
-// Transition windows never fail; their counts go into the returned
-// transitions, one per marks[1:], which are returned even when err != nil
-// so the caller can log them.
-//
-// This is the pure function that defines G03 consistency.
 func judge(samples []sample, marks []mark, end time.Time) ([]transition, error) {
 	if len(marks) < 2 {
 		return nil, fmt.Errorf("judge: got %d marks, want at least 2", len(marks))
@@ -399,9 +330,9 @@ func judge(samples []sample, marks []mark, end time.Time) ([]transition, error) 
 		}
 		hold := window(samples, m.ready, holdEnd)
 		holdOK := true
-		if len(hold) < g03MinHold {
+		if len(hold) < g03MinHoldSamples {
 			holdOK = false
-			errs = append(errs, fmt.Errorf("flip %s: hold has %d requests, want at least %d", flipLabel(from, m.to), len(hold), g03MinHold))
+			errs = append(errs, fmt.Errorf("flip %s: hold has %d requests, want at least %d", flipLabel(from, m.to), len(hold), g03MinHoldSamples))
 		}
 		var wrong int
 		var bad sample
@@ -463,9 +394,6 @@ func judge(samples []sample, marks []mark, end time.Time) ([]transition, error) 
 	return transitions, errors.Join(errs...)
 }
 
-// tail renders the samples sent in the last d before end as backend run
-// lengths, such as "blue×40 green×3 err(connection refused)×1". The traffic
-// goroutine's cleanup logs it when the test failed before judge ran.
 func tail(samples []sample, end time.Time, d time.Duration) string {
 	start := end.Add(-d)
 	var b strings.Builder
@@ -511,8 +439,6 @@ func served(s sample, backend string) bool {
 	return s.err == "" && s.status == http.StatusOK && s.backend == backend
 }
 
-// responded reports a sample that names a backend. Transport errors and
-// non-200s are skipped when counting switches.
 func responded(s sample) (string, bool) {
 	if s.err != "" || s.status != http.StatusOK || s.backend == "" {
 		return "", false
@@ -562,9 +488,6 @@ func runLabel(s sample) string {
 	return s.backend
 }
 
-// diffPath is the first field path where a and b differ, with map keys in
-// sorted order. loadFlips puts it in the error so a fixture drift names the
-// field (hostnames, backendRefs, ...).
 func diffPath(a, b any) string {
 	if p := diffAt(a, b, ""); p != "" {
 		return p
@@ -790,8 +713,11 @@ func TestJudge(t *testing.T) {
 		fillSamples(ms(5600), 20, 100*time.Millisecond, "green")...)
 
 	badHold := append([]sample{}, clean...)
-	// 5100 + 9*100ms = 6000, which is ready+1s.
-	badHold[len(badHold)-20+9].backend = "blue"
+	badAt := slices.IndexFunc(badHold, func(s sample) bool { return s.sent.Equal(ms(6000)) })
+	if badAt < 0 {
+		t.Fatal("no sample sent at 6000ms")
+	}
+	badHold[badAt].backend = "blue"
 
 	fiveHold := append([]sample{}, clean...)
 	fiveHold[len(fiveHold)-20].status = 503

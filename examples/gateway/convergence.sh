@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 # Usage: ./convergence.sh <logdir>
-# Summarizes the "g03 flip" lines TestG03WeightFlip logs across the run-*.log
-# files hack/screen.sh leaves in logdir. The output line goes into CONCEPT's
-# S3 slice 4 result alongside the screen line.
 set -uo pipefail
 export LC_ALL=C
 
@@ -10,8 +7,6 @@ dir=${1:?usage: ./convergence.sh <logdir>}
 lines=$(grep -h -oE 'g03 flip [a-z]+->[a-z]+ .*' "$dir"/run-*.log)
 [[ -n $lines ]] || { echo "convergence flips=0" >&2; exit 1; }
 
-# One record per flip line. Durations stay in seconds. An even count's median
-# is the mean of the two central values, printed to the same 0.01s as the log.
 printf '%s\n' "$lines" | awk '
 function field(line, key,    i, n, parts, eq, k, val) {
   n = split(line, parts, /[ \t]+/)

@@ -1,6 +1,3 @@
-# Every request on blue. testdata/g03-route/green is this route with the
-# weights swapped; loadFlips fails if the two differ anywhere else. Both
-# backends stay listed so ResolvedRefs stays True and only weight changes.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

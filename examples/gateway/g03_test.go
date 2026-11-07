@@ -13,19 +13,12 @@ import (
 )
 
 const (
-	g03Route = "shop/checkout"
-	g03URL   = "http://shop.example/checkout"
-	// g03Every paces the traffic goroutine. It bounds dataplane resolution.
-	g03Every = 50 * time.Millisecond
-	// g03RequestTimeout keeps a hung request from starving a hold of samples.
-	g03RequestTimeout = 2 * time.Second
+	g03Route           = "shop/checkout"
+	g03URL             = "http://shop.example/checkout"
+	g03TrafficInterval = 50 * time.Millisecond
+	g03RequestTimeout  = 2 * time.Second
 )
 
-// TestG03WeightFlip runs G03. Under live traffic, an HTTPRoute that moves
-// every request from blue to green and back converges in status (AwaitRoute
-// on the new generation) and in the data plane (every request after
-// readiness served by the selected backend). Weights are 100/0 and 0/100
-// only. Nothing here is statistical.
 func TestG03WeightFlip(t *testing.T) {
 	for _, p := range profiles {
 		t.Run(p.Name(), func(t *testing.T) {
@@ -59,14 +52,6 @@ func TestG03WeightFlip(t *testing.T) {
 	}
 }
 
-// flipTo applies f's route, then waits for the status clock and then the
-// data-plane clock, recording when each returned. The route spec differs from
-// the live one (loadFlips guarantees it), so AwaitRoute can't return on the
-// previous generation's status. RouteReady looks the same for every weight,
-// so returning means the controller accepted the new generation.
-// AwaitResponse dials on a cloned transport and drops its idle connections.
-// Traffic sets Request.Close on every sample, so each ledger request opens a
-// new connection too. judge reads that ledger.
 func flipTo(t *testing.T, h *kubeharness.Harness, gw *kubeharness.Gateway, f flip) mark {
 	t.Helper()
 	m := mark{to: f.backend, applied: time.Now()}
@@ -78,14 +63,6 @@ func flipTo(t *testing.T, h *kubeharness.Harness, gw *kubeharness.Gateway, f fli
 	return m
 }
 
-// startTraffic sends GET url through client every g03Every, one request at
-// a time, until stop. Each request sets Close, so the shared Gateway
-// transport opens a new connection for that sample. The goroutine owns its
-// samples and never calls t. stop cancels it, waits for it to exit, drops a
-// request cancelled in flight, and returns the samples and the stop time.
-// stop is idempotent. It also runs at t.Cleanup, before the Gateway's
-// forwards close, and when t has failed it logs tail(samples) so a failing
-// AwaitRoute or AwaitResponse shows what the data plane was serving.
 func startTraffic(t *testing.T, client *http.Client, url string) (stop func() ([]sample, time.Time)) {
 	t.Helper()
 	c := *client
@@ -94,7 +71,7 @@ func startTraffic(t *testing.T, client *http.Client, url string) (stop func() ([
 	done := make(chan []sample, 1)
 	go func() {
 		var out []sample
-		tick := time.NewTicker(g03Every)
+		tick := time.NewTicker(g03TrafficInterval)
 		defer tick.Stop()
 		for {
 			s := sample{sent: time.Now()}
@@ -103,7 +80,6 @@ func startTraffic(t *testing.T, client *http.Client, url string) (stop func() ([
 				s.err = err.Error()
 				out = append(out, s)
 			} else {
-				// Close so this sample opens its own connection.
 				req.Close = true
 				resp, doErr := c.Do(req)
 				if ctx.Err() != nil {

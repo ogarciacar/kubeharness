@@ -1,5 +1,3 @@
-# No HTTPRoute here. The route lives only in testdata/g03-route/<backend>,
-# so the first flip creates it and every later flip replaces it whole.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
