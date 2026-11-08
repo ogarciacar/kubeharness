@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -37,6 +38,12 @@ type GatewayProfile struct{ r *profile.Recipe }
 // EnvoyGateway is the gateway-api profile: Envoy Gateway on the Gateway API
 // standard channel, configured so Gateways get an address on Kind.
 func EnvoyGateway() GatewayProfile { return GatewayProfile{profile.EnvoyGateway()} }
+
+// AgentGateway is the gateway-agentgateway profile: agentgateway's own
+// controller on the shared Gateway API standard channel, configured so
+// Gateways get an address on Kind. Manifests that work under EnvoyGateway
+// work under AgentGateway unchanged, as far as the Gateway API contract goes.
+func AgentGateway() GatewayProfile { return GatewayProfile{profile.AgentGateway()} }
 
 // Name is the profile's name, such as "gateway-api", as the report line shows
 // it. It is empty for the zero GatewayProfile.
@@ -73,13 +80,16 @@ type GatewayController struct {
 func (h *Harness) InstallGateway(p GatewayProfile) *GatewayController {
 	h.t.Helper()
 	if p.r == nil {
-		h.t.Fatalf("kubeharness: install gateway: zero GatewayProfile; use a constructor such as kubeharness.EnvoyGateway()")
+		h.t.Fatalf("kubeharness: install gateway: zero GatewayProfile; use a constructor such as kubeharness.EnvoyGateway() or kubeharness.AgentGateway()")
 	}
 	if h.gateway != nil {
 		if h.gateway.r == p.r {
 			return h.gateway
 		}
 		h.t.Fatalf("kubeharness: install gateway %s: cluster %s already has gateway profile %s, and a cluster holds one", p.r.Name, h.name, h.gateway.r.Name)
+	}
+	if p.r.Pins.LoadImages {
+		h.loadPinnedImages(p.r.Pins.Images)
 	}
 	ctx, evidence, cancel := h.op(installTimeout)
 	defer cancel()
@@ -261,4 +271,18 @@ func controllerRefs(ds []profile.Deployment) []kube.Ref {
 		out[i] = kube.Ref{Namespace: d.Namespace, Name: d.Name}
 	}
 	return out
+}
+
+// loadPinnedImages docker-pulls each ref and copies it into the Kind nodes.
+// Kind's containerd cannot always resolve multi-arch index digests on
+// cr.agentgateway.dev; loading from the local daemon avoids that pull path.
+func (h *Harness) loadPinnedImages(images []string) {
+	h.t.Helper()
+	for _, img := range images {
+		cmd := exec.Command("docker", "pull", img)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			h.t.Fatalf("kubeharness: pull image %s: %v\n%s", img, err, out)
+		}
+		h.LoadImage(img)
+	}
 }

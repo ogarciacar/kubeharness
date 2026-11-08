@@ -43,12 +43,13 @@ func forEachRecipe(t *testing.T, check func(t *testing.T, r *Recipe)) {
 
 func TestEveryRecipeIsRenderedFromItsPins(t *testing.T) {
 	recipes := Recipes()
-	if len(recipes) != len(Pinned) {
-		t.Fatalf("%d recipes but %d pinned for hack/render", len(recipes), len(Pinned))
+	pinned := Pinned()
+	if len(recipes) != len(pinned) {
+		t.Fatalf("%d recipes but %d pinned for hack/render", len(recipes), len(pinned))
 	}
 	for i, r := range recipes {
-		if !reflect.DeepEqual(r.Pins, Pinned[i]) {
-			t.Errorf("recipe %s: pins differ from Pinned[%d], so hack/render would not render it", r.Name, i)
+		if !reflect.DeepEqual(r.Pins, pinned[i]) {
+			t.Errorf("recipe %s: pins differ from Pinned()[%d], so hack/render would not render it", r.Name, i)
 		}
 	}
 }
@@ -107,13 +108,21 @@ func TestGatewayAPICRDsMatchThePinnedBundle(t *testing.T) {
 var imageLine = regexp.MustCompile(`(?m)^[ \t]*(?:-[ \t]+)?image:[ \t]*["']?([^\s"'#]+)`)
 
 // D14: every image a layer can make kubelet pull is pinned by digest, and the
-// pins list nothing the layers do not use.
+// pins list nothing the layers do not use. An image shows up in a layer as an
+// image: line, or as an image object {registry, repository, tag, digest} on a
+// non-CRD (AgentgatewayParameters pins the proxy that way).
 func TestImagesInTheLayersAreExactlyThePinnedImages(t *testing.T) {
 	forEachRecipe(t, func(t *testing.T, r *Recipe) {
 		var used []string
 		for _, l := range layersOf(r) {
 			for _, m := range imageLine.FindAllSubmatch(l.YAML, -1) {
 				used = append(used, string(m[1]))
+			}
+			for _, o := range decode(t, l) {
+				if isCRD(o) {
+					continue
+				}
+				used = append(used, imageObjects(o.Object)...)
 			}
 		}
 		used = slices.Compact(slices.Sorted(slices.Values(used)))
@@ -127,6 +136,41 @@ func TestImagesInTheLayersAreExactlyThePinnedImages(t *testing.T) {
 			}
 		}
 	})
+}
+
+// imageObjects returns every image named in v by a map under a key "image"
+// that has string fields repository and digest, composed as
+// registry/repository:tag@digest. registry and tag may be absent.
+func imageObjects(v any) []string {
+	var out []string
+	switch v := v.(type) {
+	case map[string]any:
+		if img, ok := v["image"].(map[string]any); ok {
+			repo, _ := img["repository"].(string)
+			digest, _ := img["digest"].(string)
+			if repo != "" && digest != "" {
+				ref := repo
+				if reg, _ := img["registry"].(string); reg != "" {
+					ref = reg + "/" + repo
+				}
+				if tag, _ := img["tag"].(string); tag != "" {
+					ref += ":" + tag
+				}
+				out = append(out, ref+"@"+digest)
+			}
+		}
+		for k, child := range v {
+			if k == "image" {
+				continue
+			}
+			out = append(out, imageObjects(child)...)
+		}
+	case []any:
+		for _, child := range v {
+			out = append(out, imageObjects(child)...)
+		}
+	}
+	return out
 }
 
 func TestControllerDeploymentsAreInTheControllerLayer(t *testing.T) {
@@ -171,32 +215,68 @@ func TestClassLayerHasTheKubeharnessGatewayClassWithAClusterIPProxy(t *testing.T
 		if i < 0 {
 			t.Fatalf("GatewayClass parametersRef %v is not in the class layer", ref)
 		}
-		if !setsClusterIPService(objs[i].Object, "") {
+		if !setsClusterIPService(objs[i].Object, false) {
 			t.Errorf("%s %s does not make the proxy Service ClusterIP", objs[i].GetKind(), objs[i].GetName())
 		}
 	})
 }
 
-// setsClusterIPService reports whether v holds a field named like "service"
-// whose type is ClusterIP, which is how controllers' parameter objects shape
-// the proxy Service (Envoy Gateway's envoyService, for example).
-func setsClusterIPService(v any, key string) bool {
+// setsClusterIPService reports whether v holds type ClusterIP under a path
+// that passes through a key ending in "service" (Envoy's envoyService.type,
+// agentgateway's service.spec.type overlay).
+func setsClusterIPService(v any, underService bool) bool {
 	switch v := v.(type) {
 	case map[string]any:
-		if strings.HasSuffix(strings.ToLower(key), "service") && v["type"] == "ClusterIP" {
+		if underService && v["type"] == "ClusterIP" {
 			return true
 		}
 		for k, child := range v {
-			if setsClusterIPService(child, k) {
+			if setsClusterIPService(child, underService || strings.HasSuffix(strings.ToLower(k), "service")) {
 				return true
 			}
 		}
 	case []any:
 		for _, child := range v {
-			if setsClusterIPService(child, key) {
+			if setsClusterIPService(child, underService) {
 				return true
 			}
 		}
 	}
 	return false
+}
+
+func TestEveryRecipeInstallsTheSameGatewayAPI(t *testing.T) {
+	for _, r := range Recipes() {
+		if r.Pins.GatewayAPI != gatewayAPI {
+			t.Errorf("recipe %s pins Gateway API %+v, the harness pins %+v", r.Name, r.Pins.GatewayAPI, gatewayAPI)
+		}
+	}
+}
+
+func TestRecipeWalkersRejectNearMisses(t *testing.T) {
+	cases := []struct {
+		name string
+		ok   bool
+		v    any
+	}{
+		{"type without service ancestor", false, map[string]any{"spec": map[string]any{"type": "ClusterIP"}}},
+		{"service LoadBalancer", false, map[string]any{"service": map[string]any{"spec": map[string]any{"type": "LoadBalancer"}}}},
+		{"envoyService ClusterIP", true, map[string]any{"envoyService": map[string]any{"type": "ClusterIP"}}},
+		{"service.spec ClusterIP", true, map[string]any{"service": map[string]any{"spec": map[string]any{"type": "ClusterIP"}}}},
+	}
+	for _, tc := range cases {
+		if got := setsClusterIPService(tc.v, false); got != tc.ok {
+			t.Errorf("setsClusterIPService(%s)=%v, want %v", tc.name, got, tc.ok)
+		}
+	}
+	if got := imageObjects(map[string]any{"image": map[string]any{"repository": "agentgateway", "tag": "v1"}}); got != nil {
+		t.Errorf("imageObjects without digest = %v, want nil", got)
+	}
+	if got := imageObjects(map[string]any{"image": map[string]any{"type": "object", "properties": map[string]any{}}}); got != nil {
+		t.Errorf("imageObjects schema shape = %v, want nil", got)
+	}
+	want := []string{"r/x:v1@sha256:a"}
+	if got := imageObjects(map[string]any{"image": map[string]any{"registry": "r", "repository": "x", "tag": "v1", "digest": "sha256:a"}}); !slices.Equal(got, want) {
+		t.Errorf("imageObjects = %v, want %v", got, want)
+	}
 }
