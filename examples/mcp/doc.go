@@ -5,5 +5,5 @@
 //
 // The library does not speak MCP. Run the Kind proof from this directory:
 //
-//	go test -tags e2e -count=1 -timeout 20m -v -run '^TestA01Tools$' .
+//	go test -tags e2e -count=1 -timeout 20m -v -run '^TestA01' .
 package mcp
