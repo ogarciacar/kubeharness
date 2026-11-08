@@ -93,6 +93,9 @@ func TestEvidenceNamesTheUnresolvedAddressAndSkipsOtherRoutes(t *testing.T) {
 	if strings.Contains(got, "route default/payments") {
 		t.Fatalf("evidence includes a route that is not attached:\n%s", got)
 	}
+	if strings.Contains(got, "\n  backend ") {
+		t.Fatalf("evidence lists a core backendRef:\n%s", got)
+	}
 }
 
 func TestEvidenceIncludesProxyPodsAndControllerPods(t *testing.T) {
