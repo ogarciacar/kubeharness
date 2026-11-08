@@ -1,0 +1,15 @@
+# Breaks MCP transport wiring: the calculator speaks StreamableHTTP only.
+# path stays /mcp so the variant changes one thing.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: calculator
+spec:
+  mcp:
+    targets:
+      - name: calculator
+        static:
+          backendRef: {name: calculator}
+          port: 80
+          path: /mcp
+          protocol: SSE

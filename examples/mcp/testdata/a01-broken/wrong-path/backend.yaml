@@ -1,0 +1,14 @@
+# Breaks the MCP endpoint: the calculator serves MCP at /mcp, not /nope.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: calculator
+spec:
+  mcp:
+    targets:
+      - name: calculator
+        static:
+          backendRef: {name: calculator}
+          port: 80
+          path: /nope
+          protocol: StreamableHTTP

@@ -36,6 +36,11 @@ type Cluster struct {
 	Controller string
 	// ControllerPods are the controller Deployments, for evidence only.
 	ControllerPods []kube.Ref
+	// Kinds maps every custom kind the profile installed to the resource
+	// that serves it, from the recipe's embedded CRDs. Evidence uses it to
+	// read backends that are not Services. Nil means describe no custom
+	// backends, which is what the unit tests' fakes get.
+	Kinds map[schema.GroupKind]schema.GroupVersionResource
 }
 
 // Target is everything later operations need to know about one Gateway,

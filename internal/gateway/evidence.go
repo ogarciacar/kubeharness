@@ -82,7 +82,10 @@ func writeRoutes(b *strings.Builder, ctx context.Context, cl Cluster, gw kube.Re
 			if !r.AttachedTo(gw) {
 				continue
 			}
-			lines = append(lines, describeRoute(r))
+			var block strings.Builder
+			block.WriteString(describeRoute(r))
+			writeBackends(&block, ctx, cl, r.Backends)
+			lines = append(lines, block.String())
 		}
 		cont = list.GetContinue()
 		if cont == "" {
