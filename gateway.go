@@ -2,6 +2,7 @@ package kubeharness
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -21,6 +22,7 @@ const gatewayTimeout = readyTimeout
 const (
 	routeTimeout    = time.Minute
 	responseTimeout = time.Minute
+	probeTimeout    = time.Minute
 )
 
 // GatewayClass is the GatewayClass that every gateway profile creates. Use it
@@ -110,6 +112,7 @@ func (h *Harness) InstallGateway(p GatewayProfile) *GatewayController {
 		Class:          GatewayClass,
 		Controller:     p.r.ControllerName,
 		ControllerPods: controllerRefs(p.r.Controllers),
+		Kinds:          p.r.Kinds,
 	}}
 	return h.gateway
 }
@@ -201,6 +204,31 @@ func (g *Gateway) AwaitRoute(ref string, check func(RouteStatus) error) {
 // is nil) fails at once. check sees the response with its body buffered, up to
 // 1 MiB. It need not close the body. The error includes the status line the
 // proxy sent.
+// AwaitProbe runs probe through the Gateway every 250ms until it returns nil,
+// and fails the test after 1 minute with probe's last error and the Gateway's
+// evidence. Use it when one check needs several requests that belong
+// together, such as a protocol session. For one request, use AwaitResponse.
+//
+// Each attempt gets a fresh client and a context that ends after 5s. Every
+// connection the client opened, including a re-forward it is dialing, ends
+// with the attempt, so probe must not keep the client or anything built on it.
+// probe may replace the client's Transport with one that wraps it, for example
+// to add headers. The client sends every connection to the Gateway whatever
+// the URL host, exactly as Client does.
+//
+// The failure quotes probe's error as the attempt's whole description. Put
+// what the Gateway answered in that error. The library does not see the
+// requests probe sent.
+func (g *Gateway) AwaitProbe(probe func(ctx context.Context, c *http.Client) error) {
+	h := g.c.h
+	h.t.Helper()
+	ctx, evidence, cancel := h.op(probeTimeout)
+	defer cancel()
+	if err := gateway.AwaitProbe(ctx, evidence, g.c.cl, g.target, g.transport, probe); err != nil {
+		h.fatalf(ctx, "kubeharness: await probe on gateway %s: %v", g.target.Gateway, err)
+	}
+}
+
 func (g *Gateway) AwaitResponse(req *http.Request, check func(*http.Response) error) {
 	h := g.c.h
 	h.t.Helper()

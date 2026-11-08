@@ -4,7 +4,7 @@
 
 KubeHarness is a **proposed Go-native platform integration testing harness** for reproducible, isolated Kubernetes environments. It aims to let developers express application and platform expectations while the harness provisions the cluster, deploys dependencies and workloads, waits for usable readiness, executes verifications, gathers failure evidence, and cleans up.
 
-> **Status: S1 (owned cluster lifecycle) and the S2 workload methods are implemented, and S3 (Gateway API) is in progress with Envoy Gateway and agentgateway profiles; everything else is concept.** This repository is a clean start, not a rename or fork of [kubecheck](https://github.com/ogarciacar/kubecheck). `kubeharness.New(t)`, the five workload methods, and `InstallGateway` with `EnvoyGateway()` or `AgentGateway()` exist today. MCP experiments and further profiles are design proposals, **not implemented features**. See [CONCEPT.md](CONCEPT.md) for decisions, trade-offs, candidate experiments, and planning inputs.
+> **Status: S1 and S2 are implemented; S3 Gateway API (Envoy and agentgateway profiles) and S4 A01 (MCP through AgentGateway) are implemented; A02/A03 and later profiles are still concept.** This repository is a clean start, not a rename or fork of [kubecheck](https://github.com/ogarciacar/kubecheck). `kubeharness.New(t)`, the workload methods, `InstallGateway`, and `Gateway.AwaitProbe` exist today. See [CONCEPT.md](CONCEPT.md) for decisions, trade-offs, candidate experiments, and planning inputs.
 
 ## Quick start (implemented today)
 
@@ -93,7 +93,7 @@ Every version is pinned: Gateway API v1.6.1 standard channel for both profiles; 
 kubeharness cluster=kh-7630e8a319a4-1 phase=ready cause=ok cleanup=succeeded remaining=0 create=10.7s ready=17.4s delete=390ms profile=gateway-api install=15.7s
 ```
 
-`gc.Gateway(ref)` waits until the Gateway is Programmed, resolves its status address to one ClusterIP Service, and opens a loopback port-forward per listener port. `Client`, `AwaitRoute`, and `AwaitResponse` send real HTTP through that path. [`examples/gateway`](examples/gateway) runs G01 (host and path routing), G02 (cross-namespace ReferenceGrant deny, grant, allow, and revoke with `Delete`), and G03 (live HTTPRoute weight flip under traffic with `AwaitRoute` / `AwaitResponse` and a hold-window ledger).
+`gc.Gateway(ref)` waits until the Gateway is Programmed, resolves its status address to one ClusterIP Service, and opens a loopback port-forward per listener port. `Client`, `AwaitRoute`, and `AwaitResponse` send real HTTP through that path. `AwaitProbe` retries a multi-request exchange on the same transport (used by MCP in [`examples/mcp`](examples/mcp)). [`examples/gateway`](examples/gateway) runs G01 (host and path routing), G02 (cross-namespace ReferenceGrant deny, grant, allow, and revoke with `Delete`), and G03 (live HTTPRoute weight flip under traffic with `AwaitRoute` / `AwaitResponse` and a hold-window ledger).
 
 ### Example: Orders and PostgreSQL (M01)
 

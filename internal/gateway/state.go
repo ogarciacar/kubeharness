@@ -173,6 +173,10 @@ type Route struct {
 	// for this package.
 	ParentRefs []kube.Ref
 	Parents    []RouteParent
+	// Backends are the route's non-core backendRefs, in rule order, with
+	// duplicates removed. Weight, port, and filters are ignored. Service
+	// refs are absent. The proxy section already speaks for them.
+	Backends []BackendRef
 }
 
 // ParseRoute reads an HTTPRoute object.
@@ -192,6 +196,10 @@ func ParseRoute(u *unstructured.Unstructured) (Route, error) {
 		return Route{}, err
 	}
 	r.Parents, err = parseParents(u.Object, r.Ref.Namespace, where)
+	if err != nil {
+		return Route{}, err
+	}
+	r.Backends, err = parseBackends(u.Object, r.Ref.Namespace, where)
 	if err != nil {
 		return Route{}, err
 	}

@@ -8,6 +8,8 @@ import (
 	"embed"
 	"fmt"
 	"sync"
+
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // GatewayClass is the GatewayClass every recipe's class layer creates, so
@@ -25,6 +27,11 @@ type Recipe struct {
 	// GatewayClass can be accepted, and whose logs explain a failed install.
 	Controllers []Deployment
 	Layers      Layers
+	// Kinds maps each kind defined by the Gateway API and controller CRD
+	// layers to the resource and storage version that serve it. recipe
+	// derives it from those layers. A CRD added at render time is readable
+	// by evidence with no further code change.
+	Kinds map[schema.GroupKind]schema.GroupVersionResource
 }
 
 // Pins name every external input of a recipe, each at one exact version, and
@@ -139,17 +146,23 @@ func Recipes() []*Recipe {
 
 func recipe(name, controllerName string, controllers []Deployment, p Pins) func() *Recipe {
 	return sync.OnceValue(func() *Recipe {
+		layers := Layers{
+			GatewayAPICRDs: embedded(p.GatewayAPI.Path()),
+			ControllerCRDs: embedded(p.ControllerCRDs.Path),
+			Controller:     embedded(p.Controller.Path),
+			Class:          embedded(p.Class),
+		}
+		kinds, err := crdKinds(layers.GatewayAPICRDs, layers.ControllerCRDs)
+		if err != nil {
+			panic(fmt.Sprintf("profile: recipe %s kinds: %v", name, err))
+		}
 		return &Recipe{
 			Name:           name,
 			Pins:           p,
 			ControllerName: controllerName,
 			Controllers:    controllers,
-			Layers: Layers{
-				GatewayAPICRDs: embedded(p.GatewayAPI.Path()),
-				ControllerCRDs: embedded(p.ControllerCRDs.Path),
-				Controller:     embedded(p.Controller.Path),
-				Class:          embedded(p.Class),
-			},
+			Layers:         layers,
+			Kinds:          kinds,
 		}
 	})
 }

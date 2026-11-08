@@ -36,25 +36,16 @@ func AwaitResponse(ctx, evidenceCtx context.Context, cl Cluster, t Target, trans
 	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
 		return withEvidence(errors.New("request body cannot be replayed"), evidenceCtx, evidence)
 	}
-	_, err := Await(ctx, evidenceCtx, responseInterval, func(ctx context.Context) (struct{}, Verdict) {
-		attemptCtx, cancel := context.WithTimeout(ctx, attemptTimeout)
-		defer cancel()
-		// net/http dials with a context that ignores request cancellation, so a
-		// re-forward would otherwise run until the dialer's own budget. This
-		// attempt uses a clone so that dial ends with the attempt. Client keeps
-		// the shared transport.
-		tr := transportForAttempt(transport, attemptCtx)
-		defer tr.CloseIdleConnections()
-		resp, body, err := attempt(attemptCtx, &http.Client{Transport: tr}, req)
+	return awaitAttempts(ctx, evidenceCtx, cl, t, transport, func(ctx context.Context, c *http.Client) (string, bool) {
+		resp, body, err := attempt(ctx, c, req)
 		if err != nil {
-			return struct{}{}, Pending("%s", summarize(nil, nil, err, nil))
+			return summarize(nil, nil, err, nil), false
 		}
 		if checkErr := check(resp); checkErr != nil {
-			return struct{}{}, Pending("%s", summarize(resp, body, nil, checkErr))
+			return summarize(resp, body, nil, checkErr), false
 		}
-		return struct{}{}, Done()
-	}, evidence)
-	return err
+		return "", true
+	})
 }
 
 // attempt sends one clone of req. The response body is read into memory, up

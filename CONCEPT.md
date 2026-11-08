@@ -1,6 +1,6 @@
 # KubeHarness — Concept and Planning Baseline
 
-> **Document status:** Proposed system concept. S0 to S2 are implemented; S3 slices 0 to 4 and 6 (S4 entry) are implemented; S3 slice 5 stays gated; S4 MCP experiments and later slices are still proposals.  
+> **Document status:** Proposed system concept. S0 to S2 are implemented; S3 slices 0 to 4 and 6 (S4 entry) are implemented; S3 slice 5 stays gated; S4 A01 is implemented; A02/A03 and later slices are still proposals.  
 > **Last reviewed:** 2026-11-08.  
 > **Audience:** Maintainer, reviewers, contributors, and pstack planning agents.  
 > **Source of truth for:** Product boundary, accepted direction, candidate requirements, lifecycle and platform architecture, verification experiments, success measures, and open questions.  
@@ -63,6 +63,7 @@ Each decision has an Architecture Decision Record in `docs/adr/` ([D27](docs/adr
 | [D31](docs/adr/0031-reach-a-gateway-through-its-status-address-and-a-port-forward.md) | `GatewayController.Gateway(ref)` resolves the Gateway's status `IPAddress` to exactly one ClusterIP Service and opens one loopback port-forward per listener port; the dialer ignores the URL host and re-forwards the same Service once within `forwardTimeout`; no `sigs.k8s.io/gateway-api` dependency | Accepted |
 | [D32](docs/adr/0032-namespaced-refs-and-delete-for-referencegrant.md) | `WaitReady` and `Forward` take `"namespace/name"` (bare name still means `default`); `Harness.Delete(dir)` removes manifests in reverse Apply order until each GET is `NotFound`; G02 proves ReferenceGrant deny, grant, allow, and revoke without a `sigs.k8s.io/gateway-api` dependency | Accepted |
 | [D33](docs/adr/0033-agentgateway-recipe-shares-the-gateway-api-pin.md) | `AgentGateway()` installs agentgateway v1.4.1 with shared Gateway API v1.6.1, hand-written `kubeharness` class + ClusterIP `AgentgatewayParameters`; CEL validations stripped at render; pinned images Kind-loaded when needed | Accepted |
+| [D34](docs/adr/0034-gateways-expose-one-protocol-neutral-probe-wait.md) | `Gateway.AwaitProbe` retries a multi-request exchange on the Gateway transport; evidence prints non-Service backend status from CRD-derived kinds; MCP clients stay in examples | Accepted |
 
 **Clarification:** The Kubernetes **Gateway API is an API specification**, not a built-in gateway data plane. Using a “native Gateway API” does not remove the need for a controller/proxy. Envoy Gateway is the initial default implementation.
 
@@ -495,7 +496,7 @@ The **priority** of a profile is distinct from exact version numbering; do not e
 | S1 — Owned lifecycle | Create and dispose of a Kind cluster safely | Partial failures, cancellation, double cleanup, deadline and leak tests | Done (#1) |
 | S2 — M01 vertical slice | Orders + PostgreSQL + migrations | One reproducible end-to-end test; negative migration scenario; diagnostics | Done (#3, #4), accepted |
 | S3 — Gateway API | Envoy Gateway standard profile | G01/G02/G03, resource status and data-plane evidence | In progress (G01–G03 landed; slice 4 accepted; slice 5 gated; slice 6 / S4 entry done) |
-| S4 — Agentgateway | Kubernetes-native MCP profiles | A01/A02/A03 with deterministic tool servers and identities | In progress (recipe entry: G01–G03 under both profiles) |
+| S4 — Agentgateway | Kubernetes-native MCP profiles | A01/A02/A03 with deterministic tool servers and identities | In progress (recipe entry done; A01 accepted) |
 | S5 — Istio | East-west networking profile | I01/I02/I03 with explicit traffic-origin checks | Proposed |
 | S6 — Agent Router | Envoy AI routing profile | R01/R02/R03 with local mock providers and Redis | Proposed |
 | Future v2.0.0 investigation | Existing staging cluster design | Ownership, RBAC, read-only/mutation policies, cleanup safety, data isolation and explicit opt-in | Deferred |
@@ -611,6 +612,23 @@ Measured on Darwin 25.6.0 arm64 (12 CPUs) with Docker Desktop, kind v0.33.0, Kub
 | `TestG03WeightFlip` | 65.6s | 53.7s | 7.0s |
 
 v1.0.x was rejected on Kind: its CRDs exceed the CEL cost budget (render strips validations), it watches `TCPRoute` v1alpha2 against standard-channel CRDs, and Kind cannot always pull this registry's multi-arch index digests (`Pins.LoadImages`). The slice is accepted. S4 MCP experiments (A01–A03) are next; S3 slice 5 stays gated.
+
+### S4 A01 result: accept
+
+`examples/mcp` proves MCP discovery and invocation under `AgentGateway()` only (D34). An HTTPRoute sends `/mcp` to an `AgentgatewayBackend` with one static `StreamableHTTP` target. `Gateway.AwaitProbe` retries the MCP session through the existing Gateway transport. Evidence prints the backend's conditions from kinds derived from the embedded CRDs.
+
+Measured on Darwin arm64 with Docker Desktop, kind v0.33.0, Kubernetes v1.37.0, Gateway API v1.6.1, agentgateway v1.4.1:
+
+| Check | Result |
+| --- | --- |
+| HTTPRoute parent | `Accepted=True`, `ResolvedRefs=True` |
+| `tools/list` | `["sum"]` (unprefixed under default `Conditional`) |
+| `tools/call sum(40,2)` | text `42` |
+| `TestA01Tools` | PASS (~40s), `install=` about 6.2s after image load |
+| Broken wiring | missing-service, wrong-path, wrong-protocol, wrong-target-port each fail then recover |
+| Explains-itself | failure text includes route, backend `Accepted=`, `mcp initialize`, last exchange |
+
+S3 slice 5 stays gated. A02 (MCP auth) is next.
 
 ## 11. Design risks, trade-offs and mitigations
 

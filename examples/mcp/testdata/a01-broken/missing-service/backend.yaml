@@ -1,0 +1,14 @@
+# Breaks the Service path: the target names a Service that does not exist.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: calculator
+spec:
+  mcp:
+    targets:
+      - name: calculator
+        static:
+          backendRef: {name: calculator-missing}
+          port: 80
+          path: /mcp
+          protocol: StreamableHTTP

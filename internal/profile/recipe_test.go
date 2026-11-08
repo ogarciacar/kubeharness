@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/ogarciacar/kubeharness/internal/kube"
 )
@@ -250,6 +251,46 @@ func TestEveryRecipeInstallsTheSameGatewayAPI(t *testing.T) {
 		if r.Pins.GatewayAPI != gatewayAPI {
 			t.Errorf("recipe %s pins Gateway API %+v, the harness pins %+v", r.Name, r.Pins.GatewayAPI, gatewayAPI)
 		}
+	}
+}
+
+func TestRecipeKindsComeFromTheEmbeddedCRDs(t *testing.T) {
+	ag := AgentGateway()
+	backend := schema.GroupKind{Group: "agentgateway.dev", Kind: "AgentgatewayBackend"}
+	if got, want := ag.Kinds[backend], (schema.GroupVersionResource{Group: "agentgateway.dev", Version: "v1alpha1", Resource: "agentgatewaybackends"}); got != want {
+		t.Fatalf("AgentgatewayBackend = %+v, want %+v", got, want)
+	}
+	route := schema.GroupKind{Group: gatewayAPIGroup, Kind: "HTTPRoute"}
+	if got, want := ag.Kinds[route], (schema.GroupVersionResource{Group: gatewayAPIGroup, Version: "v1", Resource: "httproutes"}); got != want {
+		t.Fatalf("HTTPRoute = %+v, want %+v", got, want)
+	}
+	for gk := range EnvoyGateway().Kinds {
+		if gk.Group == "agentgateway.dev" {
+			t.Fatalf("envoy recipe lists %s", gk)
+		}
+	}
+	if _, ok := EnvoyGateway().Kinds[route]; !ok {
+		t.Fatal("envoy recipe has no HTTPRoute")
+	}
+}
+
+func TestCRDKindsRequiresAStorageVersion(t *testing.T) {
+	_, err := crdKinds(Layer{Path: "bad.yaml", YAML: []byte(`
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: widgets.example.dev
+spec:
+  group: example.dev
+  names:
+    kind: Widget
+    plural: widgets
+  versions:
+    - name: v1
+      served: true
+`)})
+	if err == nil || !strings.Contains(err.Error(), "widgets.example.dev") || !strings.Contains(err.Error(), "no storage version") {
+		t.Fatal(err)
 	}
 }
 
