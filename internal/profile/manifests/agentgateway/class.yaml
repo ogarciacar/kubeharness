@@ -1,0 +1,35 @@
+# Kind has no LoadBalancer, and agentgateway's proxy Service defaults to
+# LoadBalancer, which never gets an address there, so the Gateway never becomes
+# Programmed. The service overlay makes the proxy Service ClusterIP, so its
+# cluster IP is published in Gateway status.
+#
+# The chart passes the proxy image to the controller only in environment
+# variables. Pinning it here by digest makes it visible to the recipe image
+# test, which composes registry/repository:tag@digest and compares it with
+# agentgatewayProxyImage in agentgateway.go.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayParameters
+metadata:
+  name: kubeharness
+  namespace: agentgateway-system
+spec:
+  image:
+    registry: cr.agentgateway.dev
+    repository: agentgateway
+    tag: v1.4.1
+    digest: sha256:efd79355b89094a8225a9db465d9a01dc656b377f0bab458761b935a13231d29
+  service:
+    spec:
+      type: ClusterIP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: kubeharness
+spec:
+  controllerName: agentgateway.dev/agentgateway
+  parametersRef:
+    group: agentgateway.dev
+    kind: AgentgatewayParameters
+    name: kubeharness
+    namespace: agentgateway-system

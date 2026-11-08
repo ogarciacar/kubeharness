@@ -11,11 +11,7 @@ const (
 )
 
 var envoyGatewayPins = Pins{
-	GatewayAPI: GatewayAPI{
-		Version: "v1.6.1",
-		Channel: "standard",
-		SHA256:  "24d931f22abd8e40c973264319ead7cfa09d0fb7716b7ab1ee2ff174cb063a73",
-	},
+	GatewayAPI: gatewayAPI,
 	ControllerCRDs: Chart{
 		Ref:     "oci://docker.io/envoyproxy/gateway-crds-helm",
 		Version: envoyGatewayVersion,

@@ -39,6 +39,10 @@ type Pins struct {
 	Class string
 	// Images is every image the layers reference, each by digest.
 	Images []string
+	// LoadImages asks InstallGateway to docker-pull and Kind-load Images
+	// before applying layers. Set when Kind's containerd cannot resolve the
+	// registry's multi-arch index digests (agentgateway's registry).
+	LoadImages bool
 }
 
 // GatewayAPI pins a Gateway API release's install manifest.
@@ -73,6 +77,11 @@ type Chart struct {
 	Set []string
 	// Path is where the rendered layer is stored under manifests/.
 	Path string
+	// StripCELValidations drops every x-kubernetes-validations rule from the
+	// rendered objects. agentgateway's CRDs exceed the API server's CEL cost
+	// budget on Kind (Kubernetes v1.37), so Install cannot apply them as
+	// shipped. OpenAPI type checks remain.
+	StripCELValidations bool
 }
 
 // Deployment names a controller Deployment.
@@ -96,13 +105,37 @@ type Layer struct {
 //go:embed manifests
 var manifests embed.FS
 
+// catalog is the single list of recipes. Pinned and Recipes both range it, so
+// a new profile is one row here plus its pins file and class layer.
+type catalogEntry struct {
+	pins Pins
+	new  func() *Recipe
+}
+
+var catalog = []catalogEntry{
+	{pins: envoyGatewayPins, new: func() *Recipe { return EnvoyGateway() }},
+	{pins: agentgatewayPins, new: func() *Recipe { return AgentGateway() }},
+}
+
 // Pinned lists the pins of every recipe in Recipes, in the same order, for
 // hack/render. It reads no manifests, so render still runs when a pin change
 // moves a layer to a path that does not exist yet.
-var Pinned = []Pins{envoyGatewayPins}
+func Pinned() []Pins {
+	out := make([]Pins, len(catalog))
+	for i, e := range catalog {
+		out[i] = e.pins
+	}
+	return out
+}
 
 // Recipes lists every recipe.
-func Recipes() []*Recipe { return []*Recipe{EnvoyGateway()} }
+func Recipes() []*Recipe {
+	out := make([]*Recipe, len(catalog))
+	for i, e := range catalog {
+		out[i] = e.new()
+	}
+	return out
+}
 
 func recipe(name, controllerName string, controllers []Deployment, p Pins) func() *Recipe {
 	return sync.OnceValue(func() *Recipe {

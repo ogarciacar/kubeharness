@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -81,10 +82,9 @@ func TestInstallGatewayTwiceWithTheSameProfileInstallsOnce(t *testing.T) {
 func TestInstallGatewayRefusesASecondProfile(t *testing.T) {
 	tb := &fakeTB{dir: t.TempDir()}
 	f := &fakeInstall{}
-	other := GatewayProfile{&profile.Recipe{Name: "gateway-agentgateway"}}
 	harnessWithInstall(tb, f)(func(h *Harness) {
 		h.InstallGateway(EnvoyGateway())
-		h.InstallGateway(other)
+		h.InstallGateway(AgentGateway())
 	})
 	if len(f.installed) != 1 || len(tb.fatals) != 1 || !strings.Contains(tb.fatals[0], "install gateway gateway-agentgateway") || !strings.Contains(tb.fatals[0], "already has gateway profile gateway-api") {
 		t.Fatalf("installs = %v, fatals = %q", f.installed, tb.fatals)
@@ -513,10 +513,29 @@ func settledRoute(controller string) *unstructured.Unstructured {
 }
 
 func TestGatewayProfileName(t *testing.T) {
-	if got := EnvoyGateway().Name(); got != "gateway-api" {
-		t.Errorf("EnvoyGateway().Name() = %q", got)
+	for _, c := range []struct {
+		p    GatewayProfile
+		want string
+	}{
+		{EnvoyGateway(), "gateway-api"},
+		{AgentGateway(), "gateway-agentgateway"},
+		{GatewayProfile{}, ""},
+	} {
+		if got := c.p.Name(); got != c.want {
+			t.Errorf("Name() = %q, want %q", got, c.want)
+		}
 	}
-	if got := (GatewayProfile{}).Name(); got != "" {
-		t.Errorf("zero GatewayProfile Name() = %q", got)
+}
+
+func TestPublicProfilesAreTheRecipes(t *testing.T) {
+	got := []string{EnvoyGateway().Name(), AgentGateway().Name()}
+	var want []string
+	for _, r := range profile.Recipes() {
+		want = append(want, r.Name)
+	}
+	slices.Sort(got)
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Fatalf("public profiles %q, recipes %q", got, want)
 	}
 }
