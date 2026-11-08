@@ -1,0 +1,27 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: edge
+spec:
+  gatewayClassName: kubeharness
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+---
+# HTTPRoute is the parent AwaitRoute already understands. The backendRef
+# names the AgentgatewayBackend, not the calculator Service. The Kind proof
+# is whether this parent reports ResolvedRefs=True.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mcp
+spec:
+  parentRefs: [{name: edge}]
+  hostnames: [mcp.example]
+  rules:
+    - matches: [{path: {type: PathPrefix, value: /mcp}}]
+      backendRefs:
+        - group: agentgateway.dev
+          kind: AgentgatewayBackend
+          name: calculator
