@@ -1,5 +1,5 @@
 // Command render writes the manifest layers that internal/profile embeds,
-// from the pins in profile.Pinned. It downloads each Gateway API install
+// from the pins in profile.Pinned(). It downloads each Gateway API install
 // manifest and checks its sha256, and pulls each Helm chart, checks its
 // digest, and templates it with the Helm SDK. Tests never run Helm or reach
 // the network for manifests.
@@ -33,6 +33,7 @@ import (
 	"helm.sh/helm/v4/pkg/registry"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/strvals"
+	"sigs.k8s.io/yaml"
 
 	"github.com/ogarciacar/kubeharness/internal/profile"
 )
@@ -56,7 +57,7 @@ func run(dir string, check bool) error {
 	}
 	want := map[string][]byte{}
 	handWritten := map[string]bool{}
-	for _, p := range profile.Pinned {
+	for _, p := range profile.Pinned() {
 		if _, done := want[p.GatewayAPI.Path()]; !done {
 			if want[p.GatewayAPI.Path()], err = gatewayAPI(p.GatewayAPI); err != nil {
 				return err
@@ -206,5 +207,80 @@ func chart(reg *registry.Client, c profile.Chart) ([]byte, error) {
 	for _, h := range rel.Hooks {
 		fmt.Fprintf(&b, "---\n# Source: %s\n%s\n", h.Path, strings.TrimSpace(h.Manifest))
 	}
-	return b.Bytes(), nil
+	out := b.Bytes()
+	if c.StripCELValidations {
+		stripped, err := stripCELValidations(out)
+		if err != nil {
+			return nil, fmt.Errorf("strip CEL validations from %s: %w", ref, err)
+		}
+		out = stripped
+	}
+	return out, nil
+}
+
+// stripCELValidations removes every x-kubernetes-validations key from the
+// YAML documents in data. Headers and comments before the first document are
+// kept.
+func stripCELValidations(data []byte) ([]byte, error) {
+	const key = "x-kubernetes-validations"
+	parts := bytes.Split(data, []byte("\n---\n"))
+	var out bytes.Buffer
+	wroteDoc := false
+	for i, part := range parts {
+		doc := bytes.TrimSpace(bytes.TrimPrefix(bytes.TrimPrefix(part, []byte("---\n")), []byte("---")))
+		if i == 0 {
+			// Keep the generated header comments; only rewrite from the first
+			// document.
+			if idx := bytes.Index(doc, []byte("\napiVersion:")); idx >= 0 {
+				out.Write(doc[:idx+1])
+				doc = bytes.TrimSpace(doc[idx+1:])
+			} else if !bytes.HasPrefix(doc, []byte("apiVersion:")) {
+				if len(doc) > 0 {
+					out.Write(doc)
+					if !bytes.HasSuffix(doc, []byte("\n")) {
+						out.WriteByte('\n')
+					}
+				}
+				continue
+			}
+		}
+		if len(doc) == 0 {
+			continue
+		}
+		var obj any
+		if err := yaml.Unmarshal(doc, &obj); err != nil {
+			return nil, err
+		}
+		if obj == nil {
+			continue
+		}
+		removeKey(obj, key)
+		encoded, err := yaml.Marshal(obj)
+		if err != nil {
+			return nil, err
+		}
+		if wroteDoc {
+			out.WriteString("---\n")
+		}
+		out.Write(encoded)
+		if !bytes.HasSuffix(encoded, []byte("\n")) {
+			out.WriteByte('\n')
+		}
+		wroteDoc = true
+	}
+	return out.Bytes(), nil
+}
+
+func removeKey(v any, key string) {
+	switch v := v.(type) {
+	case map[string]any:
+		delete(v, key)
+		for _, child := range v {
+			removeKey(child, key)
+		}
+	case []any:
+		for _, child := range v {
+			removeKey(child, key)
+		}
+	}
 }

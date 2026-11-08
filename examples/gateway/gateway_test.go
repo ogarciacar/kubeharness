@@ -80,7 +80,7 @@ func assertRouting(t *testing.T, client *http.Client) {
 	}
 }
 
-var profiles = []kubeharness.GatewayProfile{kubeharness.EnvoyGateway()}
+var profiles = []kubeharness.GatewayProfile{kubeharness.EnvoyGateway(), kubeharness.AgentGateway()}
 
 func setupWithHarness(t *testing.T, p kubeharness.GatewayProfile) (*kubeharness.Harness, *kubeharness.Gateway) {
 	h := kubeharness.New(t)

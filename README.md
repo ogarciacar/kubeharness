@@ -4,7 +4,7 @@
 
 KubeHarness is a **proposed Go-native platform integration testing harness** for reproducible, isolated Kubernetes environments. It aims to let developers express application and platform expectations while the harness provisions the cluster, deploys dependencies and workloads, waits for usable readiness, executes verifications, gathers failure evidence, and cleans up.
 
-> **Status: S1 (owned cluster lifecycle) and the S2 workload methods are implemented, and S3 (Gateway API) is in progress; everything else is concept.** This repository is a clean start, not a rename or fork of [kubecheck](https://github.com/ogarciacar/kubecheck). `kubeharness.New(t)`, the five workload methods, and `InstallGateway` with the Envoy Gateway profile exist today. Sending traffic through a Gateway, the other profiles, and the experiments below are design proposals, **not implemented features**. See [CONCEPT.md](CONCEPT.md) for decisions, trade-offs, candidate experiments, and planning inputs.
+> **Status: S1 (owned cluster lifecycle) and the S2 workload methods are implemented, and S3 (Gateway API) is in progress with Envoy Gateway and agentgateway profiles; everything else is concept.** This repository is a clean start, not a rename or fork of [kubecheck](https://github.com/ogarciacar/kubecheck). `kubeharness.New(t)`, the five workload methods, and `InstallGateway` with `EnvoyGateway()` or `AgentGateway()` exist today. MCP experiments and further profiles are design proposals, **not implemented features**. See [CONCEPT.md](CONCEPT.md) for decisions, trade-offs, candidate experiments, and planning inputs.
 
 ## Quick start (implemented today)
 
@@ -76,18 +76,18 @@ A cleanup that fails or can't be confirmed fails the test and prints a `docker r
 
 ### Install a gateway profile
 
-`h.InstallGateway(kubeharness.EnvoyGateway())` installs the Gateway API CRDs, Envoy Gateway, and a GatewayClass named `kubeharness`, and returns when that GatewayClass is Accepted. Name it in your Gateway manifests as `gatewayClassName: kubeharness`, or use the `kubeharness.GatewayClass` constant.
+`h.InstallGateway(kubeharness.EnvoyGateway())` or `h.InstallGateway(kubeharness.AgentGateway())` installs the Gateway API CRDs, that controller, and a GatewayClass named `kubeharness`, and returns when that GatewayClass is Accepted. Name it in your Gateway manifests as `gatewayClassName: kubeharness`, or use the `kubeharness.GatewayClass` constant. The same fixtures work under both profiles.
 
 ```go
 h := kubeharness.New(t)
-gc := h.InstallGateway(kubeharness.EnvoyGateway())
+gc := h.InstallGateway(kubeharness.EnvoyGateway()) // or kubeharness.AgentGateway()
 h.Apply("testdata/gateway") // a Gateway and HTTPRoutes with gatewayClassName: kubeharness
 gw := gc.Gateway("edge")
 gw.AwaitRoute("shop", kubeharness.RouteReady)
 resp, err := gw.Client().Get("http://shop.example/orders")
 ```
 
-Every version is pinned: Gateway API v1.6.1 standard channel, Envoy Gateway v1.9.3, and each image by digest. The manifests are embedded in the module, so the install needs no Helm and no network beyond the images kubelet pulls. It has 4 minutes, and on failure the test stops with the CRDs that are not established, the controller's Pod states and logs, or the GatewayClass conditions. A second call with the same profile does nothing; a different profile fails the test. The report line gains the profile and the install time:
+Every version is pinned: Gateway API v1.6.1 standard channel for both profiles; Envoy Gateway v1.9.3 or agentgateway v1.4.1; each image by digest. The manifests are embedded in the module, so the install needs no Helm and no network beyond the images kubelet (or Kind-load) pulls. It has 4 minutes, and on failure the test stops with the CRDs that are not established, the controller's Pod states and logs, or the GatewayClass conditions. A second call with the same profile does nothing; a different profile fails the test. The report line gains the profile and the install time:
 
 ```text
 kubeharness cluster=kh-7630e8a319a4-1 phase=ready cause=ok cleanup=succeeded remaining=0 create=10.7s ready=17.4s delete=390ms profile=gateway-api install=15.7s
