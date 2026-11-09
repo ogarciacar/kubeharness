@@ -1,6 +1,6 @@
 ---
 name: verify-kubeharness
-description: Drive kubeharness (Go Kind-cluster test library) via go test and hack scripts; use when proving owned-cluster lifecycle, workload methods, Gateway install, or leak detection against a real Docker/Kind stack.
+description: Drive kubeharness (Go Kind-cluster test library) via go test and hack scripts; use when proving owned-cluster lifecycle, workload methods, Gateway install/traffic, or leak detection against a real Docker/Kind stack.
 ---
 
 # Verify kubeharness

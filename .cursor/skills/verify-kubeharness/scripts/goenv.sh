@@ -13,6 +13,12 @@ if [[ -n "$installed_root" && -x "$installed_root/bin/go" ]]; then
   installed_ver="$("$installed_root/bin/go" version 2>/dev/null | awk '{print $3}')"
 fi
 export GOTOOLCHAIN="$wanted"
+# A host GOROOT (mise, asdf, …) pinned to an older install makes the
+# toolchain's compile fail with "version … does not match go tool version …".
+# Drop it so GOTOOLCHAIN can use the toolchain's own GOROOT.
+if [[ -n "${GOROOT:-}" ]]; then
+  unset GOROOT
+fi
 tool_ver="$(go version 2>/dev/null | awk '{print $3}')"
 if [[ -n "$installed_ver" && -n "$tool_ver" && "$installed_ver" != "$tool_ver" ]]; then
   export GOCACHE="${GOCACHE:-${TMPDIR:-/tmp}/kubeharness-go-build-$tool_ver}"
