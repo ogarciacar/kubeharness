@@ -22,13 +22,14 @@ Preconditions:
 - No requirement that the machine has zero `kh-*` clusters beforehand; record before/after via `drive.sh`.
 
 - **Usable and disposed.** Run `.cursor/skills/verify-kubeharness/scripts/drive.sh owned-cluster -tags e2e -count=1 -timeout 20m -v -run '^TestNewOwnedClusterIsUsableAndDisposed$' ./e2e`. Exit code `0`, log contains `--- PASS: TestNewOwnedClusterIsUsableAndDisposed`, and `*.leaks-after.txt` shows no new `kh-*` cluster left by the drive.
-- **Failing test still disposes.** Run `.cursor/skills/verify-kubeharness/scripts/drive.sh owned-cluster-fail -tags e2e -count=1 -timeout 20m -v -run '^TestFailingTestStillDisposesCluster$' ./e2e`. Exit code `0` (the outer test expects the helper to fail and the cluster to vanish).
-- **Parallel distinct.** Run `.cursor/skills/verify-kubeharness/scripts/drive.sh owned-cluster-parallel -tags e2e -count=1 -timeout 20m -v -run '^TestParallelClustersAreDistinctAndDisposed$' ./e2e`. Exit code `0` and three distinct names appear in the log with no leftover containers.
+- **Failing test still disposes.** Run `.cursor/skills/verify-kubeharness/scripts/drive.sh owned-cluster-fail -tags e2e -count=1 -timeout 20m -v -run '^TestFailingTestStillDisposesCluster$' ./e2e`. Exit code `0` (the outer test expects the helper to fail and the cluster to vanish). Evidence lands in a separate run directory as `owned-cluster-fail.log`.
+- **Parallel distinct.** Run `.cursor/skills/verify-kubeharness/scripts/drive.sh owned-cluster-parallel -tags e2e -count=1 -timeout 20m -v -run '^TestParallelClustersAreDistinctAndDisposed$' ./e2e`. Exit code `0` and three distinct names appear in the log with no leftover containers. Evidence is `owned-cluster-parallel.log` in that run's directory.
 - **Proof.** Keep the `artifacts/<run-id>/owned-cluster.log` (and sibling metas). Confirm `hack/leaks.sh` prints `kubeharness leaks: 0` or only clusters that existed in `*.leaks-before.txt`.
 
 ## Gotchas
 
-- First Kind run pulls the node image; budget at least several minutes beyond cluster create.
+- Kind create is budgeted at 3 minutes, and a cold node-image pull happens inside that budget. A slow first pull fails `New` even with a generous `go test -timeout`. Warm the image once, or expect create to fail on a cold host.
+- `go test -timeout` skips `t.Cleanup` when the deadline fires. On a real `*testing.T`, kubeharness's deadline watchdog calls dispose first (`cause=deadline`); if the process is killed harder than that, run `scripts/cleanup.sh`.
 - `TestNewOwnedClusterIsUsableAndDisposed` may create a decoy cluster named `kind`. Do not delete it as a "leak"; it is not `kh-*`.
 - Stopping `go test` with Ctrl-C skips cleanup. Run `scripts/cleanup.sh` afterwards.
 - `go test ./...` without `-tags e2e` does not exercise this feature on real Kind.
