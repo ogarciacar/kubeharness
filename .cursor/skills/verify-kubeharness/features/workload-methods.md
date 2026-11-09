@@ -1,6 +1,6 @@
 # Workload methods
 
-Workload methods let a test apply manifests, wait for a Deployment, run a Job to completion, port-forward to a Service on loopback, and load a locally built image into the owned cluster — failing the test with Pod evidence when they cannot finish.
+Workload methods let a test apply manifests, wait for a Deployment, run a Job to completion, port-forward to a Service on loopback, and load a locally built image into the owned cluster. `WaitReady` and `RunJob` fail the test with Pod evidence when they cannot finish; `Apply`, `Forward`, and `LoadImage` fail with their own errors (no Pod dump).
 
 ## Sub-features
 
@@ -22,7 +22,7 @@ Preconditions:
 - Docker can build a small local image (used inside `TestWorkloadMethodsOnRealKind`).
 
 - **Happy path.** Run `.cursor/skills/verify-kubeharness/scripts/drive.sh workload-methods -tags e2e -count=1 -timeout 25m -v -run '^TestWorkloadMethodsOnRealKind$' ./e2e`. Exit code `0` and log contains `--- PASS: TestWorkloadMethodsOnRealKind`.
-- **Failed Job evidence.** Run `.cursor/skills/verify-kubeharness/scripts/drive.sh workload-job-fail -tags e2e -count=1 -timeout 20m -v -run '^TestFailingJobStopsTheTestWithEvidence$' ./e2e`. Exit code `0`; the helper failure output retained in the log must show Job failure evidence (not only "did not complete").
+- **Failed Job evidence.** Run `.cursor/skills/verify-kubeharness/scripts/drive.sh workload-job-fail -tags e2e -count=1 -timeout 20m -v -run '^TestFailingJobStopsTheTestWithEvidence$' ./e2e`. Exit code `0`; the helper failure output retained in the log must show Job failure evidence (not only "did not complete"). Evidence appears when the outer test fails the helper — look for the captured failure text in the log, not a green helper PASS.
 - **Proof.** Artifact log shows the PASS lines; `*.leaks-after.txt` has no new `kh-*` leftovers.
 
 ## Gotchas

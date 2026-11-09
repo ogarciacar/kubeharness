@@ -42,5 +42,6 @@ Keep implementation details out of the map. Name only user paths, stable handles
 
 - [Owned cluster lifecycle](./owned-cluster.md) covers `New`, usable API, disposal, and failing-test cleanup on real Kind.
 - [Workload methods](./workload-methods.md) covers Apply, WaitReady, RunJob, Forward, and LoadImage.
-- [Install Gateway](./install-gateway.md) covers the Envoy Gateway profile and failure evidence.
+- [Install Gateway](./install-gateway.md) covers the Envoy Gateway and Agent Gateway profiles and failure evidence.
+- [Gateway traffic](./gateway-traffic.md) covers `Gateway`, `Client`, `AwaitRoute`, `AwaitResponse`, and `AwaitProbe`.
 - [Leak detection](./leak-detection.md) covers `hack/leaks.sh` listing and the cleanup helper.
