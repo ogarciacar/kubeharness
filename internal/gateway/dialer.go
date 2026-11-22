@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ogarciacar/kubeharness/internal/kube"
+	"github.com/ogarciacar/kubeharness/internal/trace"
 )
 
 // ErrClosed is returned by dials after Close, which runs when the test ends.
@@ -31,6 +32,7 @@ type Dialer struct {
 	budget time.Duration   // cap on one re-forward, the forwardTimeout Attach received
 	stop   context.Context // canceled by Close; aborts re-forwards in flight
 	cancel context.CancelFunc
+	scope  *trace.Scope
 
 	closeOnce sync.Once
 	closeErr  error
@@ -113,6 +115,7 @@ func startForwards(ctx context.Context, t Target, budget time.Duration, open ope
 		budget: budget,
 		stop:   stop,
 		cancel: cancel,
+		scope:  trace.From(ctx).Root(),
 	}
 	for _, port := range t.Ports {
 		f, err := openPort(ctx, open, port)
@@ -233,7 +236,7 @@ func (s *slot) replace(ctx context.Context, d *Dialer, failed forward) (forward,
 	_ = failed.Close()
 	openCtx, cancel := withStopAndBudget(ctx, d.stop, d.budget)
 	defer cancel()
-	f, err := openPort(openCtx, s.open, s.port)
+	f, err := openPort(trace.With(openCtx, d.scope), s.open, s.port)
 	if err != nil {
 		return nil, err
 	}

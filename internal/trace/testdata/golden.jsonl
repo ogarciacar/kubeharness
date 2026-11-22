@@ -1,0 +1,12 @@
+{"at":0,"ev":"trace","v":1,"test":"TestG02ReferenceGrant/gateway-api","cluster":"kh-7630e8a319a4-1","start":"2026-11-20T16:11:15.123Z"}
+{"at":0,"ev":"call","id":1,"fn":"Gateway","arg":"shop/edge"}
+{"at":1,"ev":"phase","phase":"ready"}
+{"at":8,"ev":"wait","in":1,"on":"gateway","subject":"shop/edge","state":"Programmed=False reason=AddressNotAssigned: No addresses have been assigned to the Gateway"}
+{"at":20,"ev":"object","in":1,"api":"gateway.networking.k8s.io/v1","obj":"HTTPRoute/shop/pay","state":"applied"}
+{"at":23,"ev":"pod","in":1,"api":"v1","owner":"Deployment/payments/payments","pod":"payments-7c9d5b8f4-x8kqz","ready":true}
+{"at":93,"ev":"forward","in":1,"svc":"payments/payments","port":80,"pod":"payments-7c9d5b8f4-x8kqz","local":"127.0.0.1:53021"}
+{"at":94,"ev":"request","id":2,"in":1,"via":"await","method":"GET","url":"http://shop.example/payments"}
+{"at":113,"ev":"response","id":2,"status":200,"ms":19}
+{"at":113,"ev":"body","id":2,"head":"{\"backend\":\"payments\",\"path\":\"/payments\",\"host\":\"shop.example\"}"}
+{"at":114,"ev":"report","in":1,"line":"kubeharness cluster=kh-7630e8a319a4-1 phase=ready cause=ok cleanup=succeeded remaining=0 create=10.7s ready=17.4s delete=390ms profile=gateway-api install=15.7s"}
+{"at":114,"ev":"return","id":1}

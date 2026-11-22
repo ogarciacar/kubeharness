@@ -10,6 +10,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
+
+	"github.com/ogarciacar/kubeharness/internal/trace"
 )
 
 var crdResource = schema.GroupVersionResource{Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions"}
@@ -18,6 +20,8 @@ var crdResource = schema.GroupVersionResource{Group: "apiextensions.k8s.io", Ver
 // Established=True, so objects of its kinds can be created. When ctx ends, the
 // error names each CRD that is not established with its last conditions.
 func WaitEstablished(ctx context.Context, client dynamic.Interface, names []string) error {
+	s := trace.From(ctx)
+	subject := fmt.Sprintf("%d CRDs", len(names))
 	last := map[string]string{}
 	for {
 		for _, name := range names {
@@ -43,8 +47,10 @@ func WaitEstablished(ctx context.Context, client dynamic.Interface, names []stri
 			}
 		}
 		if len(pending) == 0 {
+			s.Wait(trace.OnCRDs, subject, "", true)
 			return nil
 		}
+		s.Wait(trace.OnCRDs, subject, fmt.Sprintf("%d of %d not established:%s", len(pending), len(names), strings.Join(pending, "")), false)
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("%d of %d CRDs not established: %w%s", len(pending), len(names), ctx.Err(), strings.Join(pending, ""))

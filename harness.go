@@ -28,6 +28,7 @@ import (
 	"github.com/ogarciacar/kubeharness/internal/kube"
 	"github.com/ogarciacar/kubeharness/internal/lifecycle"
 	"github.com/ogarciacar/kubeharness/internal/profile"
+	"github.com/ogarciacar/kubeharness/internal/trace"
 )
 
 var stderr io.Writer = os.Stderr
@@ -45,6 +46,7 @@ type Harness struct {
 	env        *lifecycle.Env
 	install    func(ctx, evidence context.Context, cfg *rest.Config, client kubernetes.Interface, r *profile.Recipe) error
 	gateway    *GatewayController
+	rec        *trace.Recorder
 	// opsEndBy is when every operation must have finished, so evidence and
 	// cleanup still fit before go test's -timeout panic. Zero means no bound.
 	opsEndBy time.Time
@@ -68,21 +70,49 @@ const deleteTimeout = time.Minute
 // New creates a Kind cluster owned by t and waits until it accepts workloads.
 // A setup failure fails the test immediately. Cleanup always runs, and a
 // cleanup failure is reported as its own test error.
+//
+// Every Harness writes a trace of its calls, waits, and requests to
+// kubeharness-trace-<cluster>.jsonl in t.ArtifactDir(). go test keeps it
+// only when run with -artifacts.
 func New(t testing.TB) *Harness {
 	t.Helper()
-	return newHarness(t, kindcluster.New(), kube.WaitUsable, lifecycle.DefaultTimeouts)
+	return newHarness(t, kindcluster.New(), kube.WaitUsable, lifecycle.DefaultTimeouts, artifactTrace(t))
 }
 
-func newHarness(t testing.TB, p lifecycle.Provider, ready lifecycle.ReadyFunc, to lifecycle.Timeouts) *Harness {
+func artifactTrace(t testing.TB) func(cluster, kubeconfig string) *trace.Recorder {
+	return func(cluster, kubeconfig string) *trace.Recorder {
+		f, err := os.Create(filepath.Join(t.ArtifactDir(), trace.FileName(cluster)))
+		if err != nil {
+			t.Logf("kubeharness: no trace for cluster %s: %v", cluster, err)
+			return nil
+		}
+		return trace.Start(f, t.Name(), cluster, kubeconfig)
+	}
+}
+
+func newHarness(t testing.TB, p lifecycle.Provider, ready lifecycle.ReadyFunc, to lifecycle.Timeouts, startTrace func(cluster, kubeconfig string) *trace.Recorder) *Harness {
 	t.Helper()
 	kubeconfig := filepath.Join(t.TempDir(), "kubeconfig")
 	e := lifecycle.NewEnv(p, ready, kubeconfig, to)
+	var rec *trace.Recorder
+	if startTrace != nil {
+		rec = startTrace(e.Name(), kubeconfig)
+	}
+	// Registered first, so it runs after disposal and records the report.
+	t.Cleanup(func() {
+		if err := rec.Close(); err != nil {
+			t.Logf("kubeharness: trace for cluster %s: %v", e.Name(), err)
+		}
+	})
 	t.Cleanup(func() {
 		end := lifecycle.CauseOK
 		if t.Failed() {
 			end = lifecycle.CauseTestFailed
 		}
+		s, ret := traceCall(t, rec, trace.FnCleanup, string(end))
+		defer ret()
 		r := e.Close(end)
+		s.Report(r.String())
 		t.Log(r.String())
 		if r.Cleanup == lifecycle.CleanupFailed || r.Cleanup == lifecycle.CleanupUncertain {
 			t.Errorf("kubeharness: cleanup %s for cluster %s: %v; remove it with: %s",
@@ -90,7 +120,9 @@ func newHarness(t testing.TB, p lifecycle.Provider, ready lifecycle.ReadyFunc, t
 		}
 	})
 
-	ctx := t.Context()
+	s, ret := traceCall(t, rec, trace.FnNew, "")
+	defer ret()
+	ctx := trace.With(t.Context(), s)
 	// go test's -timeout panic skips cleanups, so everything must finish before it.
 	deadline, hasDeadline := testDeadline(t)
 	disposeBy := deadline.Add(-(to.Cleanup + to.DeadlineMargin))
@@ -113,7 +145,10 @@ func newHarness(t testing.TB, p lifecycle.Provider, ready lifecycle.ReadyFunc, t
 		fired := make(chan struct{})
 		watchdog := time.AfterFunc(time.Until(disposeBy), func() {
 			defer close(fired)
+			s, ret := traceCall(t, rec, trace.FnCleanup, string(lifecycle.CauseDeadline))
+			defer ret()
 			r := e.Close(lifecycle.CauseDeadline)
+			s.Report(r.String())
 			outcome := fmt.Sprintf("disposed cluster %s early so cleanup could finish", r.Cluster)
 			if r.Cleanup != lifecycle.CleanupSucceeded {
 				outcome = fmt.Sprintf("cleanup %s for cluster %s; remove it with: %s", r.Cleanup, r.Cluster, kindcluster.Remedy(r.Cluster))
@@ -135,7 +170,7 @@ func newHarness(t testing.TB, p lifecycle.Provider, ready lifecycle.ReadyFunc, t
 	if err != nil {
 		t.Fatalf("kubeharness: client for cluster %s: %v", e.Name(), err)
 	}
-	h := &Harness{t: t, name: e.Name(), kubeconfig: kubeconfig, rest: cfg, client: client, env: e, install: profile.Install}
+	h := &Harness{t: t, name: e.Name(), kubeconfig: kubeconfig, rest: cfg, client: client, env: e, install: profile.Install, rec: rec}
 	h.images, _ = p.(imageLoader)
 	if hasDeadline {
 		h.opsEndBy = disposeBy.Add(-evidenceTimeout)
@@ -151,6 +186,13 @@ func testDeadline(t testing.TB) (time.Time, bool) {
 	return time.Time{}, false
 }
 
+// A t.Fatalf inside the call still runs the returned func, through runtime.Goexit.
+func traceCall(t testing.TB, rec *trace.Recorder, fn trace.Fn, arg string) (*trace.Scope, func()) {
+	before := t.Failed()
+	s := rec.Call(fn, arg)
+	return s, func() { s.Return(t.Failed() && !before) }
+}
+
 // ClusterName is the Kind cluster name, useful with kind and docker CLIs.
 func (h *Harness) ClusterName() string { return h.name }
 
@@ -161,15 +203,15 @@ func (h *Harness) KubeconfigPath() string { return h.kubeconfig }
 // RESTConfig returns a fresh copy of the client configuration for the cluster.
 func (h *Harness) RESTConfig() *rest.Config { return rest.CopyConfig(h.rest) }
 
-// op returns a context for one operation, bounded by limit and by opsEndBy,
-// and a second context that leaves evidenceTimeout after it for gathering
-// failure evidence.
-func (h *Harness) op(limit time.Duration) (ctx, evidence context.Context, cancel context.CancelFunc) {
+// op returns a context for one operation of call s, bounded by limit and by
+// opsEndBy, and a second context that leaves evidenceTimeout after it for
+// gathering failure evidence.
+func (h *Harness) op(s *trace.Scope, limit time.Duration) (ctx, evidence context.Context, cancel context.CancelFunc) {
 	end := time.Now().Add(limit)
 	if !h.opsEndBy.IsZero() && h.opsEndBy.Before(end) {
 		end = h.opsEndBy
 	}
-	ctx, cancelOp := context.WithDeadline(context.Background(), end)
+	ctx, cancelOp := context.WithDeadline(trace.With(context.Background(), s), end)
 	evidence, cancelEvidence := context.WithDeadline(context.Background(), end.Add(evidenceTimeout))
 	return ctx, evidence, func() { cancelOp(); cancelEvidence() }
 }
@@ -190,7 +232,9 @@ func (h *Harness) fatalf(ctx context.Context, format string, args ...any) {
 // order. Namespaced objects without a namespace go to "default".
 func (h *Harness) Apply(dir string) {
 	h.t.Helper()
-	h.apply(dir, h.manifests(dir))
+	s, ret := traceCall(h.t, h.rec, trace.FnApply, dir)
+	defer ret()
+	h.apply(s, dir, h.manifests(dir))
 }
 
 func (h *Harness) manifests(dir string) []*unstructured.Unstructured {
@@ -202,9 +246,9 @@ func (h *Harness) manifests(dir string) []*unstructured.Unstructured {
 	return objs
 }
 
-func (h *Harness) apply(dir string, objs []*unstructured.Unstructured) {
+func (h *Harness) apply(s *trace.Scope, dir string, objs []*unstructured.Unstructured) {
 	h.t.Helper()
-	ctx, _, cancel := h.op(applyTimeout)
+	ctx, _, cancel := h.op(s, applyTimeout)
 	defer cancel()
 	if _, err := kube.Apply(ctx, h.rest, objs); err != nil {
 		h.fatalf(ctx, "kubeharness: apply %s: %v", dir, err)
@@ -222,8 +266,10 @@ func (h *Harness) apply(dir string, objs []*unstructured.Unstructured) {
 // A Namespace in that directory waits on the Namespace finalizers.
 func (h *Harness) Delete(dir string) {
 	h.t.Helper()
+	s, ret := traceCall(h.t, h.rec, trace.FnDelete, dir)
+	defer ret()
 	objs := h.manifests(dir)
-	ctx, _, cancel := h.op(deleteTimeout)
+	ctx, _, cancel := h.op(s, deleteTimeout)
 	defer cancel()
 	if err := kube.Delete(ctx, h.rest, objs); err != nil {
 		h.fatalf(ctx, "kubeharness: delete %s: %v", dir, err)
@@ -245,8 +291,10 @@ func (h *Harness) ref(kind, s string) kube.Ref {
 // state and the state and logs of the Deployment's Pods.
 func (h *Harness) WaitReady(ref string) {
 	h.t.Helper()
+	s, ret := traceCall(h.t, h.rec, trace.FnWaitReady, ref)
+	defer ret()
 	r := h.ref("deployment", ref)
-	ctx, evidence, cancel := h.op(readyTimeout)
+	ctx, evidence, cancel := h.op(s, readyTimeout)
 	defer cancel()
 	if err := kube.WaitDeployment(ctx, evidence, h.client, r.Namespace, r.Name); err != nil {
 		h.fatalf(ctx, "kubeharness: wait ready %s: %v", r, err)
@@ -259,17 +307,19 @@ func (h *Harness) WaitReady(ref string) {
 // time, the test stops with the Job's conditions and its Pods' states and logs.
 func (h *Harness) RunJob(dir string) {
 	h.t.Helper()
+	s, ret := traceCall(h.t, h.rec, trace.FnRunJob, dir)
+	defer ret()
 	objs := h.manifests(dir)
 	job, err := kube.OnlyJob(objs)
 	if err != nil {
 		h.t.Fatalf("kubeharness: run job from %s: %v", dir, err)
 	}
-	ctx, evidence, cancel := h.op(jobTimeout)
+	ctx, evidence, cancel := h.op(s, jobTimeout)
 	defer cancel()
 	if err := kube.ResetJob(ctx, h.client, job.Namespace, job.Name); err != nil {
 		h.fatalf(ctx, "kubeharness: run job: %v", err)
 	}
-	h.apply(dir, objs)
+	h.apply(s, dir, objs)
 	if err := kube.WaitJob(ctx, evidence, h.client, job.Namespace, job.Name); err != nil {
 		h.fatalf(ctx, "kubeharness: run job: %v", err)
 	}
@@ -281,8 +331,10 @@ func (h *Harness) RunJob(dir string) {
 // "http://" plus the address. The forward stops when the test ends.
 func (h *Harness) Forward(ref string, port int) string {
 	h.t.Helper()
+	s, ret := traceCall(h.t, h.rec, trace.FnForward, fmt.Sprintf("%s:%d", ref, port))
+	defer ret()
 	r := h.ref("service", ref)
-	ctx, _, cancel := h.op(forwardTimeout)
+	ctx, _, cancel := h.op(s, forwardTimeout)
 	defer cancel()
 	f, err := kube.StartForward(ctx, h.rest, h.client, r.Namespace, r.Name, int32(port))
 	if err != nil {
@@ -301,10 +353,12 @@ func (h *Harness) Forward(ref string, port int) string {
 // LoadImage never builds or pulls.
 func (h *Harness) LoadImage(ref string) {
 	h.t.Helper()
+	s, ret := traceCall(h.t, h.rec, trace.FnLoadImage, ref)
+	defer ret()
 	if h.images == nil {
 		h.t.Fatalf("kubeharness: load image %s: this cluster cannot load local images", ref)
 	}
-	ctx, _, cancel := h.op(loadTimeout)
+	ctx, _, cancel := h.op(s, loadTimeout)
 	defer cancel()
 	done := make(chan error, 1)
 	go func() { done <- h.images.LoadImage(h.name, ref) }()

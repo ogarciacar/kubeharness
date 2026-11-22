@@ -1,0 +1,186 @@
+[
+ [
+  "click",
+  "button[data-profile=\"gateway-api\"]"
+ ],
+ [
+  "click",
+  "button[data-scenario=\"G02\"]"
+ ],
+ [
+  "until",
+  "document.querySelector('.kh-stage').dataset.scenario === 'G02' && document.querySelector('.kh-stage').dataset.profile === 'gateway-api'",
+  2000
+ ],
+ [
+  "until",
+  "document.querySelector('[data-corner=\"hint\"]').innerText === 'TestG02ReferenceGrant/gateway-api' && document.querySelector('[data-corner=\"fig\"]').innerText === 'Replay'",
+  2000
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-corner=\"fig\"]').innerText + ' · ' + document.querySelector('[data-corner=\"hint\"]').innerText"
+ ],
+ [
+  "until",
+  "document.querySelector('.kh-names-k').innerText === 'K8S OBJECTS'",
+  1000
+ ],
+ [
+  "until",
+  "document.querySelector('[data-corner=\"hint\"]').getBoundingClientRect().right < document.querySelector('[data-corner=\"readout\"]').getBoundingClientRect().left",
+  1000
+ ],
+ [
+  "eval",
+  "JSON.stringify(kubeharnessFigure.state())"
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('.kh-controls button')].map((b) => (b.dataset.scenario ?? b.dataset.profile ?? 'tour') + (b.disabled ? ':disabled' : ':on')).join(' ')"
+ ],
+ [
+  "until",
+  "document.querySelector('[data-part=\"plate\"]').textContent === 'kh-3cef8ffce659-1'",
+  5000
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-part=\"plate\"]').textContent"
+ ],
+ [
+  "until",
+  "document.querySelector('[data-corner=\"readout\"]').innerText === 'PINNED\\nGateway API v1.6.1 · Envoy Gateway v1.9.3\\nCLUSTER\\nkind v0.33.0 · k8s v1.37.0'",
+  1000
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-corner=\"readout\"]').innerText"
+ ],
+ [
+  "until",
+  "[...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => r.textContent).join(' | ') === \"AwaitRoute shop/pay | AwaitResponse GET /orders | AwaitRoute shop/pay\"",
+  1000
+ ],
+ [
+  "until",
+  "[...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => r.dataset.s).join(',') === 'wait,wait,wait' && document.querySelector('[data-verdict]').textContent === 'RUNNING'",
+  2000
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => r.textContent).join(' | ') + ' · ' + [...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => r.dataset.s).join(',') + ' · ' + document.querySelector('[data-verdict]').textContent"
+ ],
+ [
+  "until",
+  "/^\\d\\d:\\d\\d\\.\\d{3}$/.test(document.querySelector('[data-elapsed]').textContent) && ((t) => +t.slice(0, 2) * 60 + +t.slice(3))(document.querySelector('[data-elapsed]').textContent) < 2",
+  1000
+ ],
+ [
+  "until",
+  "[...document.querySelectorAll('.kh-groups[data-on] .kh-group-head')].map((h) => [...h.querySelectorAll('.kh-kind, .kh-name')].filter((e) => getComputedStyle(e).visibility !== 'hidden').map((e) => e.textContent).join(' ')).join(' | ') === 'Gateway | HTTPRoute | ReferenceGrant | Service | Service | Namespace'",
+  60000
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('.kh-groups[data-on] .kh-group-head')].map((h) => [...h.querySelectorAll('.kh-kind, .kh-name')].filter((e) => getComputedStyle(e).visibility !== 'hidden').map((e) => e.textContent).join(' ')).join(' | ')"
+ ],
+ [
+  "until",
+  "!/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/i.test(document.querySelector('.kh-names').textContent)",
+  1000
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('[data-pin]')].filter((p) => !p.hasAttribute('data-off')).map((p) => p.dataset.pin + '=' + p.textContent + (p.hasAttribute('data-on') ? '*' : '')).join(',') + ' · lit parts ' + [...document.querySelectorAll('[data-named][data-touched]')].map((p) => p.dataset.named).join(',')"
+ ],
+ [
+  "eval",
+  "kubeharnessFigure.steps().filter((s) => s.say.includes('Pod envoy-gateway-system/envoy-gateway-5c4bd694fd-jlwc8')).map((s) => s.index + ': ' + s.say).join(' | ')"
+ ],
+ [
+  "until",
+  "document.querySelector('.kh-stage').dataset.phase === 'test'",
+  60000
+ ],
+ [
+  "shot",
+  "replay-envoy-G02-install.png"
+ ],
+ [
+  "eval",
+  "window.khPlateH = Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "document.querySelector('.kh-groups[data-on] [data-obj=\"Pod/shop/orders-686cfdb7b8-g7qlr\"]').dataset.state === 'present' && document.querySelector('.kh-groups[data-on] [data-obj=\"Pod/shop/orders-686cfdb7b8-g7qlr\"]').textContent.includes('shop/orders-686cfdb7b8-g7qlr') && document.querySelector('.kh-groups[data-on] [data-obj=\"Pod/payments/payments-84fbfc66d8-qnv77\"]').dataset.state === 'present' && document.querySelector('.kh-groups[data-on] [data-obj=\"Pod/payments/payments-84fbfc66d8-qnv77\"]').textContent.includes('payments/payments-84fbfc66d8-qnv77')",
+  60000
+ ],
+ [
+  "eval",
+  "document.querySelector('.kh-groups[data-on] [data-obj=\"Pod/shop/orders-686cfdb7b8-g7qlr\"]').textContent + ' | ' + document.querySelector('.kh-groups[data-on] [data-obj=\"Pod/payments/payments-84fbfc66d8-qnv77\"]').textContent"
+ ],
+ [
+  "until",
+  "document.querySelector('.kh-groups[data-on] [data-obj=\"HTTPRoute/shop/pay\"]').querySelector('.kh-api')?.textContent === 'gateway.networking.k8s.io/v1' && getComputedStyle(document.querySelector('.kh-groups[data-on] [data-obj=\"HTTPRoute/shop/pay\"]').querySelector('.kh-api')).visibility === 'visible'",
+  60000
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('.kh-groups[data-on] [data-obj]')].filter((r) => r.querySelector('.kh-api') && getComputedStyle(r.querySelector('.kh-api')).visibility === 'visible').map((r) => r.dataset.obj + ' ' + r.querySelector('.kh-api').textContent).join(' | ')"
+ ],
+ [
+  "until",
+  "document.querySelector('.kh-stage').dataset.phase === 'off' && document.querySelector('[data-report]').textContent === 'kubeharness cluster=kh-3cef8ffce659-1 phase=ready cause=test-failed cleanup=succeeded remaining=0 create=8.2s ready=16.9s delete=410ms profile=gateway-api install=14s'",
+  60000
+ ],
+ [
+  "until",
+  "[...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => r.dataset.s).join(',') === 'pass,pass,fail' && [...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => ((el) => { const bg = getComputedStyle(el).backgroundColor; const probe = (v) => { const e = document.createElement('i'); e.style.background = `var(--anatomy-${v})`; el.appendChild(e); const c = getComputedStyle(e).backgroundColor; e.remove(); return c; }; return ['green', 'red'].find((v) => probe(v) === bg) ?? 'none'; })(r.querySelector('.kh-box'))).join(',') === 'green,green,red'",
+  1000
+ ],
+ [
+  "until",
+  "document.querySelector('[data-verdict]').textContent === 'FAIL' && ((el) => { const bg = getComputedStyle(el).backgroundColor; const probe = (v) => { const e = document.createElement('i'); e.style.background = `var(--anatomy-${v})`; el.appendChild(e); const c = getComputedStyle(e).backgroundColor; e.remove(); return c; }; return ['green', 'red'].find((v) => probe(v) === bg) ?? 'none'; })(document.querySelector('[data-verdict]')) === 'red'",
+  1000
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => r.dataset.s).join(',') + ' · ' + [...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => ((el) => { const bg = getComputedStyle(el).backgroundColor; const probe = (v) => { const e = document.createElement('i'); e.style.background = `var(--anatomy-${v})`; el.appendChild(e); const c = getComputedStyle(e).backgroundColor; e.remove(); return c; }; return ['green', 'red'].find((v) => probe(v) === bg) ?? 'none'; })(r.querySelector('.kh-box'))).join(',') + ' · ' + document.querySelector('[data-verdict]').textContent"
+ ],
+ [
+  "until",
+  "((t) => +t.slice(0, 2) * 60 + +t.slice(3))(document.querySelector('[data-elapsed]').textContent) > kubeharnessFigure.runSeconds() - 3 && ((t) => +t.slice(0, 2) * 60 + +t.slice(3))(document.querySelector('[data-elapsed]').textContent) <= kubeharnessFigure.runSeconds()",
+  1000
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-elapsed]').textContent + ' of ' + kubeharnessFigure.runSeconds().toFixed(3) + ' s'"
+ ],
+ [
+  "until",
+  "[...document.querySelectorAll('[data-lamp]')].map((l) => (l.hasAttribute('data-on') ? 'on' : l.hasAttribute('data-fail') ? 'fail' : l.hasAttribute('data-done') ? 'done' : '-')).join(',') === 'done,done,done,done,done,fail,done'",
+  1000
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('[data-lamp]')].map((l) => (l.hasAttribute('data-on') ? 'on' : l.hasAttribute('data-fail') ? 'fail' : l.hasAttribute('data-done') ? 'done' : '-')).join(',')"
+ ],
+ [
+  "shot",
+  "replay-envoy-G02-off.png"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === window.khPlateH",
+  1000
+ ],
+ [
+  "eval",
+  "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-report]').textContent"
+ ]
+]

@@ -15,6 +15,7 @@ import (
 	"github.com/ogarciacar/kubeharness/internal/gateway"
 	"github.com/ogarciacar/kubeharness/internal/kube"
 	"github.com/ogarciacar/kubeharness/internal/profile"
+	"github.com/ogarciacar/kubeharness/internal/trace"
 )
 
 const gatewayTimeout = readyTimeout
@@ -82,6 +83,8 @@ type GatewayController struct {
 // with a different profile fails the test.
 func (h *Harness) InstallGateway(p GatewayProfile) *GatewayController {
 	h.t.Helper()
+	s, ret := traceCall(h.t, h.rec, trace.FnInstallGateway, p.Name())
+	defer ret()
 	if p.r == nil {
 		h.t.Fatalf("kubeharness: install gateway: zero GatewayProfile; use a constructor such as kubeharness.EnvoyGateway() or kubeharness.AgentGateway()")
 	}
@@ -94,7 +97,7 @@ func (h *Harness) InstallGateway(p GatewayProfile) *GatewayController {
 	if p.r.Pins.LoadImages {
 		h.loadPinnedImages(p.r.Pins.Images)
 	}
-	ctx, evidence, cancel := h.op(installTimeout)
+	ctx, evidence, cancel := h.op(s, installTimeout)
 	defer cancel()
 	began := time.Now()
 	if err := h.install(ctx, evidence, h.rest, h.client, p.r); err != nil {
@@ -133,8 +136,10 @@ func (h *Harness) InstallGateway(p GatewayProfile) *GatewayController {
 func (c *GatewayController) Gateway(ref string) *Gateway {
 	h := c.h
 	h.t.Helper()
+	s, ret := traceCall(h.t, h.rec, trace.FnGateway, ref)
+	defer ret()
 	gw := h.ref("gateway", ref)
-	ctx, evidence, cancel := h.op(gatewayTimeout)
+	ctx, evidence, cancel := h.op(s, gatewayTimeout)
 	defer cancel()
 	target, d, err := gateway.Attach(ctx, evidence, c.cl, gw, forwardTimeout)
 	if err != nil {
@@ -145,7 +150,7 @@ func (c *GatewayController) Gateway(ref string) *Gateway {
 			h.t.Logf("kubeharness: gateway %s forwards ended with: %v", gw, err)
 		}
 	})
-	return &Gateway{c: c, target: target, transport: gateway.Transport(d)}
+	return &Gateway{c: c, target: target, transport: gateway.Transport(d), root: s.Root()}
 }
 
 // Gateway is one Gateway resource as a test reaches it: through its status
@@ -155,6 +160,7 @@ type Gateway struct {
 	c         *GatewayController
 	target    gateway.Target
 	transport *http.Transport
+	root      *trace.Scope
 }
 
 // Client returns an HTTP client whose every connection goes to the Gateway,
@@ -166,7 +172,7 @@ type Gateway struct {
 // Client is safe to call and use from any goroutine. Its connections fail
 // once the test ends.
 func (g *Gateway) Client() *http.Client {
-	return &http.Client{Transport: g.transport}
+	return &http.Client{Transport: g.root.RoundTripper(g.transport, trace.ViaClient)}
 }
 
 // AwaitRoute waits until the HTTPRoute named ref ("[namespace/]name", default
@@ -185,8 +191,10 @@ func (g *Gateway) Client() *http.Client {
 func (g *Gateway) AwaitRoute(ref string, check func(RouteStatus) error) {
 	h := g.c.h
 	h.t.Helper()
+	s, ret := traceCall(h.t, h.rec, trace.FnAwaitRoute, ref)
+	defer ret()
 	route := h.ref("route", ref)
-	ctx, evidence, cancel := h.op(routeTimeout)
+	ctx, evidence, cancel := h.op(s, routeTimeout)
 	defer cancel()
 	err := gateway.AwaitRoute(ctx, evidence, g.c.cl, g.target, route, func(cs gateway.Conditions) error {
 		return check(routeStatus(cs))
@@ -217,12 +225,14 @@ func (g *Gateway) AwaitRoute(ref string, check func(RouteStatus) error) {
 // the URL host, exactly as Client does.
 //
 // The failure quotes probe's error as the attempt's whole description. Put
-// what the Gateway answered in that error. The library does not see the
+// what the Gateway answered in that error. The failure does not quote the
 // requests probe sent.
 func (g *Gateway) AwaitProbe(probe func(ctx context.Context, c *http.Client) error) {
 	h := g.c.h
 	h.t.Helper()
-	ctx, evidence, cancel := h.op(probeTimeout)
+	s, ret := traceCall(h.t, h.rec, trace.FnAwaitProbe, g.target.Gateway.String())
+	defer ret()
+	ctx, evidence, cancel := h.op(s, probeTimeout)
 	defer cancel()
 	if err := gateway.AwaitProbe(ctx, evidence, g.c.cl, g.target, g.transport, probe); err != nil {
 		h.fatalf(ctx, "kubeharness: await probe on gateway %s: %v", g.target.Gateway, err)
@@ -232,7 +242,9 @@ func (g *Gateway) AwaitProbe(probe func(ctx context.Context, c *http.Client) err
 func (g *Gateway) AwaitResponse(req *http.Request, check func(*http.Response) error) {
 	h := g.c.h
 	h.t.Helper()
-	ctx, evidence, cancel := h.op(responseTimeout)
+	s, ret := traceCall(h.t, h.rec, trace.FnAwaitResponse, req.Method+" "+trace.URL(req.URL))
+	defer ret()
+	ctx, evidence, cancel := h.op(s, responseTimeout)
 	defer cancel()
 	if err := gateway.AwaitResponse(ctx, evidence, g.c.cl, g.target, g.transport, req, check); err != nil {
 		h.fatalf(ctx, "kubeharness: await response %s %s on gateway %s: %v", req.Method, req.URL, g.target.Gateway, err)

@@ -1,0 +1,71 @@
+/* the replay's say line quotes real conditions and its report line is the test's own, so they keep room for three and two lines and the card does not jump */
+.kh-say{min-height:4.35em}
+.kh-report{min-height:2.9em}
+.kh-split{display:grid;grid-template-columns:632px minmax(0,1fr);gap:24px}
+.kh-main{min-width:0}
+/* the title stays centred over the bench while the readout moves to the card's right edge, leaving the bottom row room for a test name beside it */
+.iso-plate:has(.kh-names) .iso-plate-corner[data-corner="title"]{right:calc(100% - 632px)}
+.kh-names{border-left:1px solid var(--anatomy-faint);padding:0 0 0 20px;font:10px/1.4 var(--anatomy-mono);color:var(--anatomy-muted)}
+.kh-names-k{color:var(--anatomy-muted);text-transform:uppercase;letter-spacing:.06em;font-size:10px;margin-bottom:10px}
+.kh-names-lists{display:grid}
+.kh-groups{grid-area:1/1;margin:0;padding:0;list-style:none;visibility:hidden}
+.kh-groups[data-on]{visibility:visible}
+.kh-groups ol{margin:0;padding:0;list-style:none}
+.kh-group{margin:0 0 9px}
+.kh-group-head{display:flex;align-items:flex-start;gap:7px;color:var(--anatomy-text);margin-bottom:3px}
+.kh-pin-key{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--anatomy-mid);font-size:9px;font-weight:700;color:var(--anatomy-hi);font-variant-numeric:tabular-nums}
+.kh-group-head[data-state="absent"]{color:var(--anatomy-muted)}
+.kh-group-head[data-state="absent"] .kh-name{visibility:hidden}
+.kh-group-head[data-touched]{color:var(--anatomy-strong)}
+.kh-group-head[data-state="gone"]>span:last-child{opacity:.55}
+.kh-group-head[data-state="gone"][data-touched]>span:last-child{opacity:1}
+.kh-group[data-on] .kh-pin-key{background:var(--anatomy-lit);border-color:var(--anatomy-lit);color:var(--anatomy-card)}
+.kh-obj{padding:1px 0 1px calc(22px + 2ch);text-indent:-2ch;overflow-wrap:anywhere;color:var(--anatomy-muted)}
+.kh-kind{opacity:.7}
+.kh-obj[data-state="absent"]{visibility:hidden}
+.kh-obj[data-touched]{color:var(--anatomy-strong)}
+[data-obj][data-touched] .kh-kind{opacity:1}
+.kh-obj[data-state="gone"]{opacity:.55}
+.kh-obj[data-state="gone"][data-touched]{opacity:1}
+[data-obj][data-state="gone"] .kh-name{text-decoration:line-through}
+.kh-gone{visibility:hidden}
+[data-obj][data-state="gone"] .kh-gone{visibility:visible}
+/* an apiVersion never breaks inside itself: it stays beside the name when it fits and drops whole onto the next line when not */
+.kh-api{display:inline-block;white-space:nowrap;text-indent:0;font-size:9px}
+.kh-group-head .kh-api{color:var(--anatomy-muted)}
+.kh-group-head[data-touched] .kh-api{color:inherit}
+.kh-group-head[data-state="absent"] .kh-api{visibility:hidden}
+.kh-names-pins{display:grid;grid-template-columns:max-content 1fr;gap:2px 8px;margin:10px 0 0;padding-top:8px;border-top:1px solid var(--anatomy-faint);color:var(--anatomy-text)}
+.kh-names-pins dt{color:var(--anatomy-muted);text-transform:uppercase;letter-spacing:.06em}
+.kh-names-pins dd{margin:0}
+.kh-names-note{margin:6px 0 0;font:10px/1.45 var(--anatomy-mono);color:var(--anatomy-muted)}
+.kh-pin circle{fill:var(--anatomy-card);stroke:var(--anatomy-hi);stroke-width:.8px;vector-effect:non-scaling-stroke}
+.kh-pin text{fill:var(--anatomy-hi);font:700 6.4px var(--anatomy-mono);text-anchor:middle;dominant-baseline:central}
+.kh-pin[data-off]{display:none}
+.kh-pin[data-on] circle{fill:var(--anatomy-lit);stroke:var(--anatomy-lit)}
+.kh-pin[data-on] text{fill:var(--anatomy-card)}
+[data-named][data-touched]>.iso-solid>.iso-top{fill:var(--anatomy-lit-top)}
+[data-named][data-touched]>.iso-solid>.iso-shade{fill:var(--anatomy-lit-shade)}
+[data-named][data-touched]>.iso-solid>.iso-fill{fill:var(--anatomy-face)}
+[data-named][data-touched]>.iso-solid>.iso-edge{stroke:var(--anatomy-lit)}
+@media (max-width:1100px){.kh-split{grid-template-columns:minmax(0,1fr)}.iso-plate:has(.kh-names) .iso-plate-corners{right:20px}.kh-names{border-left:0;padding:0 20px}}
+/* a Go test name is case-sensitive, so the hint corner keeps the trace header's casing */
+.iso-plate-corner[data-corner="hint"]{text-transform:none;letter-spacing:.04em}
+/* the checks: one box per Await* call, filled when the call returns, green when it passed and red when it failed the test */
+.kh-checks-k{color:var(--anatomy-muted);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 6px;padding-top:10px;border-top:1px solid var(--anatomy-faint)}
+.kh-checks-lists{display:grid}
+.kh-checks{grid-area:1/1;margin:0;padding:0;list-style:none;visibility:hidden}
+.kh-checks[data-on]{visibility:visible}
+.kh-check{display:flex;align-items:center;gap:7px;padding:1px 0;color:var(--anatomy-muted)}
+.kh-check[data-s="pass"],.kh-check[data-s="fail"]{color:var(--anatomy-strong)}
+.kh-box{flex:none;width:10px;height:10px;border:1px solid var(--anatomy-lo);border-radius:2px;margin-left:2px}
+.kh-check[data-s="pass"] .kh-box{background:var(--anatomy-green);border-color:var(--anatomy-green)}
+.kh-check[data-s="fail"] .kh-box{background:var(--anatomy-red);border-color:var(--anatomy-red)}
+.kh-verdict{display:inline-block;margin-left:12px;padding:2px 7px;border-radius:3px;font-weight:700;letter-spacing:.1em;border:1px solid var(--anatomy-lo);color:var(--anatomy-muted)}
+.kh-verdict[data-verdict="PASS"]{background:var(--anatomy-green);border-color:var(--anatomy-green);color:#000}
+.kh-verdict[data-verdict="FAIL"]{background:var(--anatomy-red);border-color:var(--anatomy-red);color:#fff}
+/* the bottom-right corner holds the pinned versions, two rows of key and value */
+.iso-plate-corner[data-readout]:has(.kh-ro-k){display:grid;grid-template-columns:max-content max-content;gap:5px 10px;line-height:1.1}
+.kh-ro-k{color:var(--anatomy-muted);text-transform:uppercase;letter-spacing:.06em}
+/* the replay's own elapsed time, top right over the panel, in the same column as the pinned versions */
+.iso-plate-corner[data-corner="elapsed"]{top:0;right:0;color:var(--anatomy-text);font-variant-numeric:tabular-nums;letter-spacing:.04em}

@@ -17,6 +17,8 @@ import (
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 	"k8s.io/streaming/pkg/httpstream"
+
+	"github.com/ogarciacar/kubeharness/internal/trace"
 )
 
 // Forwarding is a live port-forward from 127.0.0.1 to a Pod behind a Service.
@@ -81,6 +83,9 @@ func StartForward(ctx context.Context, cfg *rest.Config, client kubernetes.Inter
 		return nil, fmt.Errorf("port-forward to pod %s: local port unknown: %v", pod, err)
 	}
 	f.Addr = fmt.Sprintf("127.0.0.1:%d", ports[0].Local)
+	s := trace.From(ctx)
+	s.Pod("Service/"+namespace+"/"+service, pod, true)
+	s.Forward(namespace+"/"+service, port, pod, f.Addr)
 	return f, nil
 }
 

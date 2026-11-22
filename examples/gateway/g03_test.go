@@ -22,6 +22,7 @@ const (
 func TestG03WeightFlip(t *testing.T) {
 	for _, p := range profiles {
 		t.Run(p.Name(), func(t *testing.T) {
+			t.Parallel()
 			flips := g03Flips(t)
 			h := kubeharness.New(t)
 			gc := h.InstallGateway(p)

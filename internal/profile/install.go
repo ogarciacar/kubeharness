@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/ogarciacar/kubeharness/internal/kube"
+	"github.com/ogarciacar/kubeharness/internal/trace"
 )
 
 var gatewayClassResource = schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1", Resource: "gatewayclasses"}
@@ -91,17 +92,20 @@ func decodeLayers(layers ...Layer) ([]*unstructured.Unstructured, error) {
 // waitAccepted polls until GatewayClass kubeharness has Accepted=True written
 // for its current generation, so an earlier spec's status does not count.
 func waitAccepted(ctx context.Context, client dynamic.Interface) error {
+	s := trace.From(ctx)
 	last := "not observed yet"
 	for {
 		gc, err := client.Resource(gatewayClassResource).Get(ctx, GatewayClass, metav1.GetOptions{})
 		if err == nil {
 			var accepted bool
 			accepted, last = acceptedState(gc)
+			s.Wait(trace.OnClass, GatewayClass, last, accepted)
 			if accepted {
 				return nil
 			}
 		} else if ctx.Err() == nil {
 			last = err.Error()
+			s.Wait(trace.OnClass, GatewayClass, last, false)
 		}
 		select {
 		case <-ctx.Done():

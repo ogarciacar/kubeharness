@@ -15,6 +15,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
+
+	"github.com/ogarciacar/kubeharness/internal/trace"
 )
 
 const (
@@ -81,6 +83,7 @@ func jobState(j *batchv1.Job) Progress {
 // When it fails or ctx ends, the error carries the last observation and the
 // state of the Deployment's Pods, gathered within evidenceCtx.
 func WaitDeployment(ctx, evidenceCtx context.Context, client kubernetes.Interface, namespace, name string) error {
+	s := trace.From(ctx)
 	last := "not observed yet"
 	var seen *appsv1.Deployment
 	for {
@@ -89,14 +92,17 @@ func WaitDeployment(ctx, evidenceCtx context.Context, client kubernetes.Interfac
 			seen = d
 			var p Progress
 			p, last = rolloutState(d)
+			s.Wait(trace.OnRollout, namespace+"/"+name, last, p == Done)
 			switch p {
 			case Done:
+				tracePods(ctx, s, client, namespace, d)
 				return nil
 			case Failed:
 				return fmt.Errorf("deployment %s/%s failed: %s%s%s", namespace, name, last, deploymentConditions(d), podEvidence(evidenceCtx, client, namespace, d.Spec.Selector))
 			}
 		} else if ctx.Err() == nil {
 			last = err.Error()
+			s.Wait(trace.OnRollout, namespace+"/"+name, last, false)
 		}
 		select {
 		case <-ctx.Done():
@@ -114,6 +120,7 @@ func WaitDeployment(ctx, evidenceCtx context.Context, client kubernetes.Interfac
 // error carries the Job's conditions and each Pod's container states and log
 // tails, gathered within evidenceCtx.
 func WaitJob(ctx, evidenceCtx context.Context, client kubernetes.Interface, namespace, name string) error {
+	s := trace.From(ctx)
 	var job *batchv1.Job
 	last := "not observed yet"
 	for {
@@ -123,15 +130,18 @@ func WaitJob(ctx, evidenceCtx context.Context, client kubernetes.Interface, name
 		}
 		if err == nil {
 			job = j
-			switch jobState(j) {
+			state := jobState(j)
+			last = fmt.Sprintf("active=%d succeeded=%d failed=%d", j.Status.Active, j.Status.Succeeded, j.Status.Failed)
+			s.Wait(trace.OnJob, namespace+"/"+name, last, state == Done)
+			switch state {
 			case Done:
 				return nil
 			case Failed:
 				return fmt.Errorf("job %s failed%s", name, jobEvidence(evidenceCtx, client, j))
 			}
-			last = fmt.Sprintf("active=%d succeeded=%d failed=%d", j.Status.Active, j.Status.Succeeded, j.Status.Failed)
 		} else if ctx.Err() == nil {
 			last = err.Error()
+			s.Wait(trace.OnJob, namespace+"/"+name, last, false)
 		}
 		select {
 		case <-ctx.Done():
@@ -141,6 +151,25 @@ func WaitJob(ctx, evidenceCtx context.Context, client kubernetes.Interface, name
 			}
 			return fmt.Errorf("job %s did not complete: %w; last observed: %s%s", name, ctx.Err(), last, evidence)
 		case <-time.After(PollInterval):
+		}
+	}
+}
+
+func tracePods(ctx context.Context, s *trace.Scope, client kubernetes.Interface, namespace string, d *appsv1.Deployment) {
+	if s == nil || d.Spec.Selector == nil {
+		return
+	}
+	selector, err := metav1.LabelSelectorAsSelector(d.Spec.Selector)
+	if err != nil {
+		return
+	}
+	pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return
+	}
+	for _, p := range pods.Items {
+		if p.DeletionTimestamp == nil {
+			s.Pod("Deployment/"+namespace+"/"+d.Name, p.Name, podReady(p))
 		}
 	}
 }

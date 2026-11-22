@@ -1,0 +1,104 @@
+{"at":0,"ev":"trace","v":1,"test":"TestG01Routing/gateway-agentgateway","cluster":"kh-3400f4ebe24e-4","start":"2026-11-22T12:13:52.841Z"}
+{"at":0,"ev":"call","id":1,"fn":"New"}
+{"at":0,"ev":"phase","phase":"validating"}
+{"at":20,"ev":"phase","phase":"provisioning"}
+{"at":8578,"ev":"phase","phase":"wait-usable"}
+{"at":8583,"ev":"wait","in":1,"on":"usable","subject":"cluster","state":"node kh-3400f4ebe24e-4-control-plane Ready=False (KubeletNotReady)"}
+{"at":24808,"ev":"wait","in":1,"on":"usable","subject":"cluster","done":true}
+{"at":24808,"ev":"phase","phase":"ready"}
+{"at":24808,"ev":"return","id":1}
+{"at":24808,"ev":"call","id":2,"fn":"InstallGateway","arg":"gateway-agentgateway"}
+{"at":24841,"ev":"call","id":3,"fn":"LoadImage","arg":"cr.agentgateway.dev/controller:v1.4.1@sha256:8b9e2bbe65b6a4b2ed93acd4fd0ede11f1eb2cfa8495e2b67c2d890e7fce8cec"}
+{"at":27726,"ev":"return","id":3}
+{"at":27754,"ev":"call","id":4,"fn":"LoadImage","arg":"cr.agentgateway.dev/agentgateway:v1.4.1@sha256:efd79355b89094a8225a9db465d9a01dc656b377f0bab458761b935a13231d29"}
+{"at":28783,"ev":"return","id":4}
+{"at":28859,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/backendtlspolicies.gateway.networking.k8s.io","state":"applied"}
+{"at":28866,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/gatewayclasses.gateway.networking.k8s.io","state":"applied"}
+{"at":28891,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/gateways.gateway.networking.k8s.io","state":"applied"}
+{"at":28916,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/grpcroutes.gateway.networking.k8s.io","state":"applied"}
+{"at":28989,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/httproutes.gateway.networking.k8s.io","state":"applied"}
+{"at":28999,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/listenersets.gateway.networking.k8s.io","state":"applied"}
+{"at":29012,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/referencegrants.gateway.networking.k8s.io","state":"applied"}
+{"at":29022,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/tcproutes.gateway.networking.k8s.io","state":"applied"}
+{"at":29045,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/tlsroutes.gateway.networking.k8s.io","state":"applied"}
+{"at":29058,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/udproutes.gateway.networking.k8s.io","state":"applied"}
+{"at":29137,"ev":"object","in":2,"api":"admissionregistration.k8s.io/v1","obj":"ValidatingAdmissionPolicy/safe-upgrades.gateway.networking.k8s.io","state":"applied"}
+{"at":29241,"ev":"object","in":2,"api":"admissionregistration.k8s.io/v1","obj":"ValidatingAdmissionPolicyBinding/safe-upgrades.gateway.networking.k8s.io","state":"applied"}
+{"at":29508,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/agentgatewaybackends.agentgateway.dev","state":"applied"}
+{"at":29660,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/agentgatewaymodels.agentgateway.dev","state":"applied"}
+{"at":29849,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/agentgatewayparameters.agentgateway.dev","state":"applied"}
+{"at":30087,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/agentgatewaypolicies.agentgateway.dev","state":"applied"}
+{"at":30900,"ev":"wait","in":2,"on":"crds","subject":"14 CRDs","done":true}
+{"at":30906,"ev":"object","in":2,"api":"v1","obj":"Namespace/agentgateway-system","state":"applied"}
+{"at":30908,"ev":"object","in":2,"api":"v1","obj":"ServiceAccount/agentgateway-system/agentgateway","state":"applied"}
+{"at":30910,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"ClusterRole/agentgateway-agentgateway-system","state":"applied"}
+{"at":30912,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"ClusterRoleBinding/agentgateway-role-agentgateway-system","state":"applied"}
+{"at":30921,"ev":"object","in":2,"api":"v1","obj":"Service/agentgateway-system/agentgateway","state":"applied"}
+{"at":30929,"ev":"object","in":2,"api":"apps/v1","obj":"Deployment/agentgateway-system/agentgateway","state":"applied"}
+{"at":30930,"ev":"wait","in":2,"on":"rollout","subject":"agentgateway-system/agentgateway","state":"controller has not observed the latest spec"}
+{"at":31433,"ev":"wait","in":2,"on":"rollout","subject":"agentgateway-system/agentgateway","state":"0 of 1 updated replicas available"}
+{"at":34956,"ev":"wait","in":2,"on":"rollout","subject":"agentgateway-system/agentgateway","state":"1 of 1 replicas available","done":true}
+{"at":34958,"ev":"pod","in":2,"api":"v1","owner":"Deployment/agentgateway-system/agentgateway","pod":"agentgateway-5c7fb5cf75-x89w4","ready":true}
+{"at":34963,"ev":"object","in":2,"api":"agentgateway.dev/v1alpha1","obj":"AgentgatewayParameters/agentgateway-system/kubeharness","state":"applied"}
+{"at":34965,"ev":"object","in":2,"api":"gateway.networking.k8s.io/v1","obj":"GatewayClass/kubeharness","state":"applied"}
+{"at":34966,"ev":"wait","in":2,"on":"class","subject":"kubeharness","state":"condition Accepted=Unknown reason=Pending observedGeneration=0 (generation 1): Waiting for controller"}
+{"at":35469,"ev":"wait","in":2,"on":"class","subject":"kubeharness","done":true}
+{"at":35469,"ev":"return","id":2}
+{"at":35469,"ev":"call","id":5,"fn":"LoadImage","arg":"kubeharness.local/gateway-backend:test"}
+{"at":36230,"ev":"return","id":5}
+{"at":36230,"ev":"call","id":6,"fn":"Apply","arg":"testdata/g01"}
+{"at":36236,"ev":"object","in":6,"api":"gateway.networking.k8s.io/v1","obj":"Gateway/default/edge","state":"applied"}
+{"at":36249,"ev":"object","in":6,"api":"gateway.networking.k8s.io/v1","obj":"HTTPRoute/default/shop","state":"applied"}
+{"at":36252,"ev":"object","in":6,"api":"gateway.networking.k8s.io/v1","obj":"HTTPRoute/default/payments","state":"applied"}
+{"at":36255,"ev":"object","in":6,"api":"apps/v1","obj":"Deployment/default/orders","state":"applied"}
+{"at":36259,"ev":"object","in":6,"api":"v1","obj":"Service/default/orders","state":"applied"}
+{"at":36262,"ev":"object","in":6,"api":"apps/v1","obj":"Deployment/default/payments","state":"applied"}
+{"at":36268,"ev":"object","in":6,"api":"v1","obj":"Service/default/payments","state":"applied"}
+{"at":36268,"ev":"return","id":6}
+{"at":36268,"ev":"call","id":7,"fn":"WaitReady","arg":"orders"}
+{"at":36271,"ev":"wait","in":7,"on":"rollout","subject":"default/orders","state":"0 of 1 replicas updated"}
+{"at":36774,"ev":"wait","in":7,"on":"rollout","subject":"default/orders","state":"1 of 1 replicas available","done":true}
+{"at":36776,"ev":"pod","in":7,"api":"v1","owner":"Deployment/default/orders","pod":"orders-686cfdb7b8-cd685","ready":true}
+{"at":36776,"ev":"return","id":7}
+{"at":36776,"ev":"call","id":8,"fn":"WaitReady","arg":"payments"}
+{"at":36777,"ev":"wait","in":8,"on":"rollout","subject":"default/payments","state":"1 of 1 replicas available","done":true}
+{"at":36778,"ev":"pod","in":8,"api":"v1","owner":"Deployment/default/payments","pod":"payments-84fbfc66d8-jhk7d","ready":true}
+{"at":36778,"ev":"return","id":8}
+{"at":36778,"ev":"call","id":9,"fn":"Gateway","arg":"edge"}
+{"at":36780,"ev":"wait","in":9,"on":"gateway","subject":"default/edge","state":"service default/edge ports [80]","done":true}
+{"at":38812,"ev":"pod","in":9,"api":"v1","owner":"Service/default/edge","pod":"edge-8688746b4f-d7r2f","ready":true}
+{"at":38812,"ev":"forward","in":9,"svc":"default/edge","port":80,"pod":"edge-8688746b4f-d7r2f","local":"127.0.0.1:57498"}
+{"at":38812,"ev":"return","id":9}
+{"at":38812,"ev":"call","id":10,"fn":"AwaitRoute","arg":"shop"}
+{"at":38813,"ev":"wait","in":10,"on":"route","subject":"default/shop","state":"Accepted=True ResolvedRefs=True","done":true}
+{"at":38813,"ev":"return","id":10}
+{"at":38813,"ev":"call","id":11,"fn":"AwaitRoute","arg":"payments"}
+{"at":38814,"ev":"wait","in":11,"on":"route","subject":"default/payments","state":"Accepted=True ResolvedRefs=True","done":true}
+{"at":38814,"ev":"return","id":11}
+{"at":38814,"ev":"call","id":12,"fn":"AwaitResponse","arg":"GET http://shop.example/orders"}
+{"at":38814,"ev":"request","id":13,"in":12,"via":"await","method":"GET","url":"http://shop.example/orders"}
+{"at":38818,"ev":"response","id":13,"status":200,"ms":3}
+{"at":38818,"ev":"body","id":13,"head":"{\"backend\":\"orders\",\"path\":\"/orders\",\"host\":\"shop.example\"}\n"}
+{"at":38818,"ev":"wait","in":12,"on":"response","subject":"GET http://shop.example/orders","state":"200 OK","done":true}
+{"at":38818,"ev":"return","id":12}
+{"at":38818,"ev":"request","id":14,"via":"client","method":"GET","url":"http://shop.example/orders"}
+{"at":38820,"ev":"response","id":14,"status":200,"ms":2}
+{"at":38820,"ev":"body","id":14,"head":"{\"backend\":\"orders\",\"path\":\"/orders\",\"host\":\"shop.example\"}\n"}
+{"at":38820,"ev":"request","id":15,"via":"client","method":"GET","url":"http://shop.example/orders/42"}
+{"at":38821,"ev":"response","id":15,"status":200,"ms":0}
+{"at":38821,"ev":"body","id":15,"head":"{\"backend\":\"orders\",\"path\":\"/orders/42\",\"host\":\"shop.example\"}\n"}
+{"at":38821,"ev":"request","id":16,"via":"client","method":"GET","url":"http://shop.example/payments"}
+{"at":38822,"ev":"response","id":16,"status":200,"ms":0}
+{"at":38822,"ev":"body","id":16,"head":"{\"backend\":\"payments\",\"path\":\"/payments\",\"host\":\"shop.example\"}\n"}
+{"at":38822,"ev":"request","id":17,"via":"client","method":"GET","url":"http://payments.example/refunds"}
+{"at":38824,"ev":"response","id":17,"status":200,"ms":1}
+{"at":38824,"ev":"body","id":17,"head":"{\"backend\":\"payments\",\"path\":\"/refunds\",\"host\":\"payments.example\"}\n"}
+{"at":38824,"ev":"request","id":18,"via":"client","method":"GET","url":"http://shop.example/unrouted"}
+{"at":38825,"ev":"response","id":18,"status":404,"ms":0}
+{"at":38825,"ev":"body","id":18,"head":"route not found"}
+{"at":38825,"ev":"request","id":19,"via":"client","method":"GET","url":"http://unknown.example/orders"}
+{"at":38827,"ev":"response","id":19,"status":404,"ms":1}
+{"at":38827,"ev":"body","id":19,"head":"route not found"}
+{"at":38827,"ev":"call","id":20,"fn":"Cleanup","arg":"ok"}
+{"at":39188,"ev":"report","in":20,"line":"kubeharness cluster=kh-3400f4ebe24e-4 phase=ready cause=ok cleanup=succeeded remaining=0 create=8.6s ready=16.2s delete=360ms profile=gateway-agentgateway install=6.7s"}
+{"at":39188,"ev":"return","id":20}

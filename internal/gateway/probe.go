@@ -3,6 +3,8 @@ package gateway
 import (
 	"context"
 	"net/http"
+
+	"github.com/ogarciacar/kubeharness/internal/trace"
 )
 
 // AwaitProbe calls probe with a fresh client every responseInterval until
@@ -12,7 +14,7 @@ import (
 //
 // On failure the error carries that line and Evidence for t.
 func AwaitProbe(ctx, evidenceCtx context.Context, cl Cluster, t Target, transport *http.Transport, probe func(context.Context, *http.Client) error) error {
-	return awaitAttempts(ctx, evidenceCtx, cl, t, transport, func(ctx context.Context, c *http.Client) (string, bool) {
+	return awaitAttempts(ctx, evidenceCtx, cl, t, transport, trace.OnProbe, t.Gateway.String(), trace.ViaProbe, func(ctx context.Context, c *http.Client) (string, bool) {
 		if err := probe(ctx, c); err != nil {
 			return "last attempt: " + oneLine(err.Error()), false
 		}
@@ -29,7 +31,7 @@ func AwaitProbe(ctx, evidenceCtx context.Context, cl Cluster, t Target, transpor
 // a context that ignores request cancellation, so a re-forward would otherwise
 // run until the dialer's own budget. The clone's dial ends with the attempt.
 // The caller's transport is left unchanged.
-func awaitAttempts(ctx, evidenceCtx context.Context, cl Cluster, t Target, transport *http.Transport, try func(context.Context, *http.Client) (why string, done bool)) error {
+func awaitAttempts(ctx, evidenceCtx context.Context, cl Cluster, t Target, transport *http.Transport, on trace.On, subject string, via trace.Via, try func(context.Context, *http.Client) (line string, done bool)) error {
 	evidence := func(ctx context.Context) string {
 		return Evidence(ctx, cl, t.Gateway, t.Service)
 	}
@@ -38,11 +40,13 @@ func awaitAttempts(ctx, evidenceCtx context.Context, cl Cluster, t Target, trans
 		defer cancel()
 		tr := transportForAttempt(transport, attemptCtx)
 		defer tr.CloseIdleConnections()
-		why, done := try(attemptCtx, &http.Client{Transport: tr})
+		s := trace.From(ctx)
+		line, done := try(attemptCtx, &http.Client{Transport: s.RoundTripper(tr, via)})
+		s.Wait(on, subject, line, done)
 		if done {
 			return struct{}{}, Done()
 		}
-		return struct{}{}, Pending("%s", why)
+		return struct{}{}, Pending("%s", line)
 	}, evidence)
 	return err
 }

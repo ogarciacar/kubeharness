@@ -7,6 +7,8 @@ import (
 	"slices"
 	"sync"
 	"time"
+
+	"github.com/ogarciacar/kubeharness/internal/trace"
 )
 
 // Provider is the cluster backend. Implementations may block without honoring
@@ -106,7 +108,7 @@ func (e *Env) Fail(cause Cause, err error) error {
 }
 
 func (e *Env) Start(ctx context.Context) error {
-	e.report.Phase = PhaseValidating
+	e.enter(ctx, PhaseValidating)
 	preflightCtx, cancelPreflight := context.WithTimeout(ctx, e.t.Preflight)
 	defer cancelPreflight()
 	began := time.Now()
@@ -128,7 +130,7 @@ func (e *Env) Start(ctx context.Context) error {
 		return e.Fail(CausePreflight, fmt.Errorf("%w: %s", ErrNameTaken, e.name))
 	}
 
-	e.report.Phase = PhaseProvisioning
+	e.enter(ctx, PhaseProvisioning)
 	e.mustDispose = true
 	e.createDone = make(chan error, 1)
 	go func() { e.createDone <- e.p.Create(string(e.name), e.kubeconfig) }()
@@ -155,7 +157,7 @@ func (e *Env) Start(ctx context.Context) error {
 		return e.Fail(causeOf(createCtx.Err(), CauseProvisioning), fmt.Errorf("create did not return after %s: %w", took, createCtx.Err()))
 	}
 
-	e.report.Phase = PhaseWaitUsable
+	e.enter(ctx, PhaseWaitUsable)
 	readyCtx, cancelReady := context.WithTimeout(ctx, e.t.Ready)
 	defer cancelReady()
 	began = time.Now()
@@ -167,8 +169,13 @@ func (e *Env) Start(ctx context.Context) error {
 		}
 		return e.Fail(causeOf(readyCtx.Err(), CauseReadiness), err)
 	}
-	e.report.Phase = PhaseReady
+	e.enter(ctx, PhaseReady)
 	return nil
+}
+
+func (e *Env) enter(ctx context.Context, p Phase) {
+	e.report.Phase = p
+	trace.From(ctx).Phase(string(p))
 }
 
 // close disposes of the cluster. end is recorded as the cause only when

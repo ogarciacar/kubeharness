@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,6 +21,7 @@ type fakeTB struct {
 	testing.TB
 	dir      string
 	cleanups []func()
+	mu       sync.Mutex
 	failed   bool
 	fatals   []string
 	errs     []string
@@ -33,16 +35,32 @@ func (f *fakeTB) Helper()                  {}
 func (f *fakeTB) TempDir() string          { return f.dir }
 func (f *fakeTB) Context() context.Context { return context.Background() }
 func (f *fakeTB) Cleanup(fn func())        { f.cleanups = append(f.cleanups, fn) }
-func (f *fakeTB) Failed() bool             { return f.failed }
-func (f *fakeTB) Log(args ...any)          { f.logs = append(f.logs, fmt.Sprint(args...)) }
 func (f *fakeTB) Logf(string, ...any)      {}
+
+func (f *fakeTB) Failed() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.failed
+}
+
+func (f *fakeTB) Log(args ...any) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.logs = append(f.logs, fmt.Sprint(args...))
+}
+
 func (f *fakeTB) Errorf(format string, args ...any) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.failed = true
 	f.errs = append(f.errs, fmt.Sprintf(format, args...))
 }
+
 func (f *fakeTB) Fatalf(format string, args ...any) {
+	f.mu.Lock()
 	f.failed = true
 	f.fatals = append(f.fatals, fmt.Sprintf(format, args...))
+	f.mu.Unlock()
 	runtime.Goexit()
 }
 
@@ -62,7 +80,7 @@ func TestSetupFailureFailsTestAndStillCleansUp(t *testing.T) {
 	f := lifecycletest.NewFake()
 	f.CreateAllocatesThenFails = true
 	tb := &fakeTB{dir: t.TempDir()}
-	tb.run(func() { newHarness(tb, f, readyOK, fastTimeouts) })
+	tb.run(func() { newHarness(tb, f, readyOK, fastTimeouts, nil) })
 
 	if len(tb.fatals) != 1 || !strings.Contains(tb.fatals[0], "setup failed") {
 		t.Fatalf("fatals = %q", tb.fatals)
@@ -84,7 +102,7 @@ func TestCleanupFailureIsItsOwnTestErrorWithRemedy(t *testing.T) {
 	to := fastTimeouts
 	to.RetryInterval = time.Hour
 	to.Cleanup = time.Second
-	tb.run(func() { h = newHarness(tb, f, readyOK, to) })
+	tb.run(func() { h = newHarness(tb, f, readyOK, to, nil) })
 
 	if len(tb.fatals) != 0 {
 		t.Fatalf("setup should have passed: %q", tb.fatals)
@@ -108,7 +126,7 @@ func TestSetupLeavesCleanupAndMarginBeforeTestDeadline(t *testing.T) {
 	to.Create = time.Hour
 	deadline := time.Now().Add(to.Cleanup + to.DeadlineMargin + 300*time.Millisecond)
 	tb := &fakeTB{dir: t.TempDir(), deadline: deadline}
-	tb.run(func() { newHarness(tb, f, readyOK, to) })
+	tb.run(func() { newHarness(tb, f, readyOK, to, nil) })
 
 	if left := time.Until(deadline); left < to.DeadlineMargin/2 {
 		t.Fatalf("cleanup finished %s before the test deadline, want about %s of margin", left, to.DeadlineMargin)
@@ -130,7 +148,7 @@ func TestOverrunningTestBodyGetsClusterDisposedBeforeDeadline(t *testing.T) {
 	var name string
 	var liveAtDeadline int
 	tb.run(func() {
-		h := newHarness(tb, f, readyOK, to)
+		h := newHarness(tb, f, readyOK, to, nil)
 		name = h.ClusterName()
 		time.Sleep(time.Until(deadline))
 		_, _, liveAtDeadline = f.Counts()
@@ -165,7 +183,7 @@ func TestClusterNameReachesStderrBeforeCreate(t *testing.T) {
 	p := &stderrAtCreate{Fake: lifecycletest.NewFake(), out: &out}
 	tb := &fakeTB{dir: t.TempDir()}
 	var name string
-	tb.run(func() { name = newHarness(tb, p, readyOK, fastTimeouts).ClusterName() })
+	tb.run(func() { name = newHarness(tb, p, readyOK, fastTimeouts, nil).ClusterName() })
 	if !strings.Contains(p.seen, kindcluster.Remedy(name)) {
 		t.Fatalf("cluster name and remedy not on stderr when Create started: %q", p.seen)
 	}
@@ -176,7 +194,7 @@ func TestUncertainCleanupFailsTheTest(t *testing.T) {
 	f.CreateBlock = make(chan struct{})
 	defer close(f.CreateBlock)
 	tb := &fakeTB{dir: t.TempDir()}
-	tb.run(func() { newHarness(tb, f, readyOK, fastTimeouts) })
+	tb.run(func() { newHarness(tb, f, readyOK, fastTimeouts, nil) })
 	if len(tb.errs) != 1 || !strings.Contains(tb.errs[0], "cleanup uncertain") {
 		t.Fatalf("uncertain cleanup did not fail the test: errs=%q", tb.errs)
 	}
@@ -186,7 +204,7 @@ func TestTimeoutTooShortForCleanupFailsBeforeCreating(t *testing.T) {
 	f := lifecycletest.NewFake()
 	to := fastTimeouts
 	tb := &fakeTB{dir: t.TempDir(), deadline: time.Now().Add(to.Cleanup + to.DeadlineMargin - 10*time.Millisecond)}
-	tb.run(func() { newHarness(tb, f, readyOK, to) })
+	tb.run(func() { newHarness(tb, f, readyOK, to, nil) })
 	creates, _, _ := f.Counts()
 	if creates != 0 || len(tb.fatals) != 1 || !strings.Contains(tb.fatals[0], "-timeout") {
 		t.Fatalf("creates=%d fatals=%q", creates, tb.fatals)
@@ -209,7 +227,7 @@ func TestFailedEarlyDisposalSaysSoAndGivesTheRemedy(t *testing.T) {
 	tb := &fakeTB{dir: t.TempDir(), deadline: deadline}
 	var name string
 	tb.run(func() {
-		name = newHarness(tb, f, readyOK, to).ClusterName()
+		name = newHarness(tb, f, readyOK, to, nil).ClusterName()
 		time.Sleep(time.Until(deadline))
 	})
 	if strings.Contains(out.String(), "disposed cluster") || !strings.Contains(out.String(), "cleanup failed for cluster "+name) || !strings.Contains(out.String(), kindcluster.Remedy(name)) {
@@ -220,7 +238,7 @@ func TestFailedEarlyDisposalSaysSoAndGivesTheRemedy(t *testing.T) {
 func TestRESTConfigReturnsACopy(t *testing.T) {
 	tb := &fakeTB{dir: t.TempDir()}
 	var h *Harness
-	tb.run(func() { h = newHarness(tb, lifecycletest.NewFake(), readyOK, fastTimeouts) })
+	tb.run(func() { h = newHarness(tb, lifecycletest.NewFake(), readyOK, fastTimeouts, nil) })
 	a := h.RESTConfig()
 	a.Host = "https://changed.invalid"
 	if h.RESTConfig().Host == a.Host {
@@ -242,7 +260,7 @@ var fastTimeouts = lifecycle.Timeouts{
 func TestOperationsEndBeforeTheEvidenceAndCleanupWindow(t *testing.T) {
 	end := time.Now().Add(200 * time.Millisecond)
 	h := &Harness{opsEndBy: end}
-	ctx, evidence, cancel := h.op(time.Hour)
+	ctx, evidence, cancel := h.op(nil, time.Hour)
 	defer cancel()
 	if d, _ := ctx.Deadline(); !d.Equal(end) {
 		t.Fatalf("operation deadline %s, want opsEndBy %s", d, end)
@@ -251,7 +269,7 @@ func TestOperationsEndBeforeTheEvidenceAndCleanupWindow(t *testing.T) {
 		t.Fatalf("evidence deadline %s, want %s after the operation", d, evidenceTimeout)
 	}
 	unbounded := &Harness{}
-	ctx, _, cancel2 := unbounded.op(time.Minute)
+	ctx, _, cancel2 := unbounded.op(nil, time.Minute)
 	defer cancel2()
 	if d, _ := ctx.Deadline(); time.Until(d) > time.Minute || time.Until(d) < 59*time.Second {
 		t.Fatalf("operation without a test deadline should use its own limit, got %s", time.Until(d))

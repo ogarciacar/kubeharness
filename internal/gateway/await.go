@@ -23,6 +23,16 @@ func Pending(format string, args ...any) Verdict {
 	return Verdict{why: fmt.Sprintf(format, args...)}
 }
 
+func (v Verdict) describe(done string) string {
+	switch {
+	case v.stop != nil:
+		return v.stop.Error()
+	case v.done:
+		return done
+	}
+	return v.why
+}
+
 // Stop says the state can never hold. A missing object is Stop, and so is a
 // Gateway whose class no installed controller serves.
 func Stop(err error) Verdict { return Verdict{stop: err} }

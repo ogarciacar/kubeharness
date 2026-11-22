@@ -9,7 +9,7 @@ This directory is the maintained source for verifying user-facing behavior of th
 - `.cursor/skills/verify-kubeharness/scripts/doctor.sh` exits 0 (Docker up for any e2e feature).
 - Evidence directory: `.cursor/skills/verify-kubeharness/artifacts/<run-id>/` (created by `drive.sh`).
 - Never delete non-`kh-*` Kind clusters. Never stop the Docker daemon.
-- Prefer one e2e drive at a time on a laptop; parallel `kh-*` clusters are supported by the library but share Docker CPU/disk.
+- Prefer one e2e drive at a time on a laptop; parallel `kh-*` clusters are supported by the library but share Docker CPU/disk. A single `examples/gateway` drive already runs two clusters at once, one per profile.
 
 ## Driving conventions
 

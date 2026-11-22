@@ -100,6 +100,7 @@ func setupWithHarness(t *testing.T, p kubeharness.GatewayProfile) (*kubeharness.
 func TestG01Routing(t *testing.T) {
 	for _, p := range profiles {
 		t.Run(p.Name(), func(t *testing.T) {
+			t.Parallel()
 			_, gw := setupWithHarness(t, p)
 			assertRouting(t, gw.Client())
 		})
@@ -127,6 +128,7 @@ func setupWrongPort(t *testing.T, p kubeharness.GatewayProfile) *kubeharness.Gat
 func TestG01WrongBackendPort(t *testing.T) {
 	for _, p := range profiles {
 		t.Run(p.Name(), func(t *testing.T) {
+			t.Parallel()
 			gw := setupWrongPort(t, p)
 			gw.AwaitResponse(get("http://shop.example/orders"), notFromBackend())
 		})
@@ -200,6 +202,7 @@ type reading struct {
 func TestG02ReferenceGrant(t *testing.T) {
 	for _, p := range profiles {
 		t.Run(p.Name(), func(t *testing.T) {
+			t.Parallel()
 			h := kubeharness.New(t)
 			gc := h.InstallGateway(p)
 			buildBackendImage(t)

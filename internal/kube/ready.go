@@ -12,6 +12,8 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/ogarciacar/kubeharness/internal/trace"
 )
 
 // WaitUsable polls until the API answers, every node is Ready, and the
@@ -31,12 +33,15 @@ func WaitUsable(ctx context.Context, kubeconfigPath string) error {
 }
 
 func pollUsable(ctx context.Context, observe func(context.Context) error, interval time.Duration) error {
+	s := trace.From(ctx)
 	var last error
 	for {
 		notUsable := observe(ctx)
 		if notUsable == nil {
+			s.Wait(trace.OnUsable, "cluster", "", true)
 			return nil
 		}
+		s.Wait(trace.OnUsable, "cluster", notUsable.Error(), false)
 		if ctx.Err() == nil || last == nil {
 			last = notUsable
 		}

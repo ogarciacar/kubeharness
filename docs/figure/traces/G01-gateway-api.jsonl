@@ -1,0 +1,114 @@
+{"at":0,"ev":"trace","v":1,"test":"TestG01Routing/gateway-api","cluster":"kh-3400f4ebe24e-3","start":"2026-11-22T12:13:52.835Z"}
+{"at":0,"ev":"call","id":1,"fn":"New"}
+{"at":0,"ev":"phase","phase":"validating"}
+{"at":21,"ev":"phase","phase":"provisioning"}
+{"at":8757,"ev":"phase","phase":"wait-usable"}
+{"at":8762,"ev":"wait","in":1,"on":"usable","subject":"cluster","state":"node kh-3400f4ebe24e-3-control-plane Ready=False (KubeletNotReady)"}
+{"at":25128,"ev":"wait","in":1,"on":"usable","subject":"cluster","done":true}
+{"at":25128,"ev":"phase","phase":"ready"}
+{"at":25129,"ev":"return","id":1}
+{"at":25129,"ev":"call","id":2,"fn":"InstallGateway","arg":"gateway-api"}
+{"at":25251,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/backendtlspolicies.gateway.networking.k8s.io","state":"applied"}
+{"at":25276,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/gatewayclasses.gateway.networking.k8s.io","state":"applied"}
+{"at":25323,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/gateways.gateway.networking.k8s.io","state":"applied"}
+{"at":25380,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/grpcroutes.gateway.networking.k8s.io","state":"applied"}
+{"at":25530,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/httproutes.gateway.networking.k8s.io","state":"applied"}
+{"at":25565,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/listenersets.gateway.networking.k8s.io","state":"applied"}
+{"at":25586,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/referencegrants.gateway.networking.k8s.io","state":"applied"}
+{"at":25624,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/tcproutes.gateway.networking.k8s.io","state":"applied"}
+{"at":25659,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/tlsroutes.gateway.networking.k8s.io","state":"applied"}
+{"at":25701,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/udproutes.gateway.networking.k8s.io","state":"applied"}
+{"at":25722,"ev":"object","in":2,"api":"admissionregistration.k8s.io/v1","obj":"ValidatingAdmissionPolicy/safe-upgrades.gateway.networking.k8s.io","state":"applied"}
+{"at":25728,"ev":"object","in":2,"api":"admissionregistration.k8s.io/v1","obj":"ValidatingAdmissionPolicyBinding/safe-upgrades.gateway.networking.k8s.io","state":"applied"}
+{"at":25850,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/backends.gateway.envoyproxy.io","state":"applied"}
+{"at":26089,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/backendtrafficpolicies.gateway.envoyproxy.io","state":"applied"}
+{"at":26283,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/clienttrafficpolicies.gateway.envoyproxy.io","state":"applied"}
+{"at":26492,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/envoyextensionpolicies.gateway.envoyproxy.io","state":"applied"}
+{"at":26650,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/envoypatchpolicies.gateway.envoyproxy.io","state":"applied"}
+{"at":27041,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/envoyproxies.gateway.envoyproxy.io","state":"applied"}
+{"at":27060,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/httproutefilters.gateway.envoyproxy.io","state":"applied"}
+{"at":27365,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/securitypolicies.gateway.envoyproxy.io","state":"applied"}
+{"at":28979,"ev":"wait","in":2,"on":"crds","subject":"18 CRDs","done":true}
+{"at":28985,"ev":"object","in":2,"api":"v1","obj":"Namespace/envoy-gateway-system","state":"applied"}
+{"at":28987,"ev":"object","in":2,"api":"v1","obj":"ServiceAccount/envoy-gateway-system/envoy-gateway","state":"applied"}
+{"at":28989,"ev":"object","in":2,"api":"v1","obj":"ConfigMap/envoy-gateway-system/envoy-gateway-config","state":"applied"}
+{"at":28992,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"ClusterRole/eg-gateway-helm-envoy-gateway-role","state":"applied"}
+{"at":28995,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"ClusterRoleBinding/eg-gateway-helm-envoy-gateway-rolebinding","state":"applied"}
+{"at":28997,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"Role/envoy-gateway-system/eg-gateway-helm-infra-manager","state":"applied"}
+{"at":28999,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"Role/envoy-gateway-system/eg-gateway-helm-leader-election-role","state":"applied"}
+{"at":29002,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"RoleBinding/envoy-gateway-system/eg-gateway-helm-infra-manager","state":"applied"}
+{"at":29004,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"RoleBinding/envoy-gateway-system/eg-gateway-helm-leader-election-rolebinding","state":"applied"}
+{"at":29017,"ev":"object","in":2,"api":"v1","obj":"Service/envoy-gateway-system/envoy-gateway","state":"applied"}
+{"at":29188,"ev":"object","in":2,"api":"apps/v1","obj":"Deployment/envoy-gateway-system/envoy-gateway","state":"applied"}
+{"at":29387,"ev":"object","in":2,"api":"v1","obj":"ServiceAccount/envoy-gateway-system/eg-gateway-helm-certgen","state":"applied"}
+{"at":29585,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"ClusterRole/eg-gateway-helm-certgen:envoy-gateway-system","state":"applied"}
+{"at":29786,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"ClusterRoleBinding/eg-gateway-helm-certgen:envoy-gateway-system","state":"applied"}
+{"at":29986,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"Role/envoy-gateway-system/eg-gateway-helm-certgen","state":"applied"}
+{"at":30186,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"RoleBinding/envoy-gateway-system/eg-gateway-helm-certgen","state":"applied"}
+{"at":30391,"ev":"object","in":2,"api":"batch/v1","obj":"Job/envoy-gateway-system/eg-gateway-helm-certgen","state":"applied"}
+{"at":30590,"ev":"object","in":2,"api":"admissionregistration.k8s.io/v1","obj":"MutatingWebhookConfiguration/envoy-gateway-topology-injector.envoy-gateway-system","state":"applied"}
+{"at":30592,"ev":"wait","in":2,"on":"rollout","subject":"envoy-gateway-system/envoy-gateway","state":"0 of 1 updated replicas available"}
+{"at":39357,"ev":"wait","in":2,"on":"rollout","subject":"envoy-gateway-system/envoy-gateway","state":"1 of 1 replicas available","done":true}
+{"at":39360,"ev":"pod","in":2,"api":"v1","owner":"Deployment/envoy-gateway-system/envoy-gateway","pod":"envoy-gateway-5c4bd694fd-fpxfc","ready":true}
+{"at":39369,"ev":"object","in":2,"api":"gateway.envoyproxy.io/v1alpha1","obj":"EnvoyProxy/envoy-gateway-system/kubeharness","state":"applied"}
+{"at":39371,"ev":"object","in":2,"api":"gateway.networking.k8s.io/v1","obj":"GatewayClass/kubeharness","state":"applied"}
+{"at":39373,"ev":"wait","in":2,"on":"class","subject":"kubeharness","state":"condition Accepted=Unknown reason=Pending observedGeneration=0 (generation 1): Waiting for controller"}
+{"at":39877,"ev":"wait","in":2,"on":"class","subject":"kubeharness","done":true}
+{"at":39877,"ev":"return","id":2}
+{"at":39877,"ev":"call","id":3,"fn":"LoadImage","arg":"kubeharness.local/gateway-backend:test"}
+{"at":40382,"ev":"return","id":3}
+{"at":40382,"ev":"call","id":4,"fn":"Apply","arg":"testdata/g01"}
+{"at":40387,"ev":"object","in":4,"api":"gateway.networking.k8s.io/v1","obj":"Gateway/default/edge","state":"applied"}
+{"at":40390,"ev":"object","in":4,"api":"gateway.networking.k8s.io/v1","obj":"HTTPRoute/default/shop","state":"applied"}
+{"at":40392,"ev":"object","in":4,"api":"gateway.networking.k8s.io/v1","obj":"HTTPRoute/default/payments","state":"applied"}
+{"at":40395,"ev":"object","in":4,"api":"apps/v1","obj":"Deployment/default/orders","state":"applied"}
+{"at":40398,"ev":"object","in":4,"api":"v1","obj":"Service/default/orders","state":"applied"}
+{"at":40402,"ev":"object","in":4,"api":"apps/v1","obj":"Deployment/default/payments","state":"applied"}
+{"at":40408,"ev":"object","in":4,"api":"v1","obj":"Service/default/payments","state":"applied"}
+{"at":40408,"ev":"return","id":4}
+{"at":40408,"ev":"call","id":5,"fn":"WaitReady","arg":"orders"}
+{"at":40410,"ev":"wait","in":5,"on":"rollout","subject":"default/orders","state":"0 of 1 updated replicas available"}
+{"at":40913,"ev":"wait","in":5,"on":"rollout","subject":"default/orders","state":"1 of 1 replicas available","done":true}
+{"at":40914,"ev":"pod","in":5,"api":"v1","owner":"Deployment/default/orders","pod":"orders-686cfdb7b8-wtldd","ready":true}
+{"at":40914,"ev":"return","id":5}
+{"at":40914,"ev":"call","id":6,"fn":"WaitReady","arg":"payments"}
+{"at":40916,"ev":"wait","in":6,"on":"rollout","subject":"default/payments","state":"1 of 1 replicas available","done":true}
+{"at":40917,"ev":"pod","in":6,"api":"v1","owner":"Deployment/default/payments","pod":"payments-84fbfc66d8-stltr","ready":true}
+{"at":40917,"ev":"return","id":6}
+{"at":40917,"ev":"call","id":7,"fn":"Gateway","arg":"edge"}
+{"at":40918,"ev":"wait","in":7,"on":"gateway","subject":"default/edge","state":"Programmed=False reason=NoResources: Envoy replicas unavailable"}
+{"at":52540,"ev":"wait","in":7,"on":"gateway","subject":"default/edge","state":"service envoy-gateway-system/envoy-default-edge-3f113443 ports [80]","done":true}
+{"at":52562,"ev":"pod","in":7,"api":"v1","owner":"Service/envoy-gateway-system/envoy-default-edge-3f113443","pod":"envoy-default-edge-3f113443-5b99b588dc-z6p67","ready":true}
+{"at":52562,"ev":"forward","in":7,"svc":"envoy-gateway-system/envoy-default-edge-3f113443","port":80,"pod":"envoy-default-edge-3f113443-5b99b588dc-z6p67","local":"127.0.0.1:57515"}
+{"at":52562,"ev":"return","id":7}
+{"at":52562,"ev":"call","id":8,"fn":"AwaitRoute","arg":"shop"}
+{"at":52564,"ev":"wait","in":8,"on":"route","subject":"default/shop","state":"Accepted=True ResolvedRefs=True","done":true}
+{"at":52564,"ev":"return","id":8}
+{"at":52564,"ev":"call","id":9,"fn":"AwaitRoute","arg":"payments"}
+{"at":52565,"ev":"wait","in":9,"on":"route","subject":"default/payments","state":"Accepted=True ResolvedRefs=True","done":true}
+{"at":52566,"ev":"return","id":9}
+{"at":52566,"ev":"call","id":10,"fn":"AwaitResponse","arg":"GET http://shop.example/orders"}
+{"at":52566,"ev":"request","id":11,"in":10,"via":"await","method":"GET","url":"http://shop.example/orders"}
+{"at":52572,"ev":"response","id":11,"status":200,"ms":6}
+{"at":52573,"ev":"body","id":11,"head":"{\"backend\":\"orders\",\"path\":\"/orders\",\"host\":\"shop.example\"}\n"}
+{"at":52573,"ev":"wait","in":10,"on":"response","subject":"GET http://shop.example/orders","state":"200 OK","done":true}
+{"at":52573,"ev":"return","id":10}
+{"at":52573,"ev":"request","id":12,"via":"client","method":"GET","url":"http://shop.example/orders"}
+{"at":52576,"ev":"response","id":12,"status":200,"ms":2}
+{"at":52576,"ev":"body","id":12,"head":"{\"backend\":\"orders\",\"path\":\"/orders\",\"host\":\"shop.example\"}\n"}
+{"at":52576,"ev":"request","id":13,"via":"client","method":"GET","url":"http://shop.example/orders/42"}
+{"at":52577,"ev":"response","id":13,"status":200,"ms":1}
+{"at":52577,"ev":"body","id":13,"head":"{\"backend\":\"orders\",\"path\":\"/orders/42\",\"host\":\"shop.example\"}\n"}
+{"at":52577,"ev":"request","id":14,"via":"client","method":"GET","url":"http://shop.example/payments"}
+{"at":52581,"ev":"response","id":14,"status":200,"ms":4}
+{"at":52581,"ev":"body","id":14,"head":"{\"backend\":\"payments\",\"path\":\"/payments\",\"host\":\"shop.example\"}\n"}
+{"at":52581,"ev":"request","id":15,"via":"client","method":"GET","url":"http://payments.example/refunds"}
+{"at":52587,"ev":"response","id":15,"status":200,"ms":5}
+{"at":52587,"ev":"body","id":15,"head":"{\"backend\":\"payments\",\"path\":\"/refunds\",\"host\":\"payments.example\"}\n"}
+{"at":52587,"ev":"request","id":16,"via":"client","method":"GET","url":"http://shop.example/unrouted"}
+{"at":52587,"ev":"response","id":16,"status":404,"ms":0}
+{"at":52587,"ev":"request","id":17,"via":"client","method":"GET","url":"http://unknown.example/orders"}
+{"at":52590,"ev":"response","id":17,"status":404,"ms":2}
+{"at":52590,"ev":"call","id":18,"fn":"Cleanup","arg":"ok"}
+{"at":53061,"ev":"report","in":18,"line":"kubeharness cluster=kh-3400f4ebe24e-3 phase=ready cause=ok cleanup=succeeded remaining=0 create=8.7s ready=16.4s delete=470ms profile=gateway-api install=14.7s"}
+{"at":53061,"ev":"return","id":18}

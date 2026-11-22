@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/ogarciacar/kubeharness/internal/kube"
+	"github.com/ogarciacar/kubeharness/internal/trace"
 )
 
 var (
@@ -80,7 +81,9 @@ func Attach(ctx, evidenceCtx context.Context, cl Cluster, gw kube.Ref, budget ti
 // On failure the error carries the last reason and Evidence for gw.
 func awaitTarget(ctx, evidenceCtx context.Context, cl Cluster, gw kube.Ref) (Target, error) {
 	return Await(ctx, evidenceCtx, kube.PollInterval, func(ctx context.Context) (Target, Verdict) {
-		return observeTarget(ctx, cl, gw)
+		t, v := observeTarget(ctx, cl, gw)
+		trace.From(ctx).Wait(trace.OnGateway, gw.String(), v.describe(fmt.Sprintf("service %s ports %v", t.Service, t.Ports)), v.done)
+		return t, v
 	}, func(ctx context.Context) string {
 		return Evidence(ctx, cl, gw, kube.Ref{})
 	})

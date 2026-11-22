@@ -10,12 +10,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ogarciacar/kubeharness/internal/trace"
 )
 
 const (
 	attemptTimeout = 5 * time.Second
 	bodyLimit      = 1 << 20 // bytes buffered for check
-	bodyHead       = 200     // bytes of the last body quoted in a failure
+	bodyHead       = trace.HeadLimit
 )
 
 // AwaitResponse sends a fresh clone of req through transport every
@@ -36,7 +38,8 @@ func AwaitResponse(ctx, evidenceCtx context.Context, cl Cluster, t Target, trans
 	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
 		return withEvidence(errors.New("request body cannot be replayed"), evidenceCtx, evidence)
 	}
-	return awaitAttempts(ctx, evidenceCtx, cl, t, transport, func(ctx context.Context, c *http.Client) (string, bool) {
+	subject := req.Method + " " + trace.URL(req.URL)
+	return awaitAttempts(ctx, evidenceCtx, cl, t, transport, trace.OnResponse, subject, trace.ViaAwait, func(ctx context.Context, c *http.Client) (string, bool) {
 		resp, body, err := attempt(ctx, c, req)
 		if err != nil {
 			return summarize(nil, nil, err, nil), false
@@ -44,7 +47,7 @@ func AwaitResponse(ctx, evidenceCtx context.Context, cl Cluster, t Target, trans
 		if checkErr := check(resp); checkErr != nil {
 			return summarize(resp, body, nil, checkErr), false
 		}
-		return "", true
+		return resp.Status, true
 	})
 }
 

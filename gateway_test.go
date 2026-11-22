@@ -50,7 +50,7 @@ func (f *fakeInstall) install(ctx, _ context.Context, _ *rest.Config, _ kubernet
 func harnessWithInstall(tb *fakeTB, f *fakeInstall) func(body func(h *Harness)) {
 	return func(body func(h *Harness)) {
 		tb.run(func() {
-			h := newHarness(tb, lifecycletest.NewFake(), readyOK, fastTimeouts)
+			h := newHarness(tb, lifecycletest.NewFake(), readyOK, fastTimeouts, nil)
 			h.install = f.install
 			body(h)
 		})

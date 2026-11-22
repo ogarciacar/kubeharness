@@ -1,0 +1,135 @@
+{"at":0,"ev":"trace","v":1,"test":"TestG02ReferenceGrant/gateway-agentgateway","cluster":"kh-3400f4ebe24e-8","start":"2026-11-22T12:17:30.491Z"}
+{"at":0,"ev":"call","id":1,"fn":"New"}
+{"at":0,"ev":"phase","phase":"validating"}
+{"at":22,"ev":"phase","phase":"provisioning"}
+{"at":8704,"ev":"phase","phase":"wait-usable"}
+{"at":8709,"ev":"wait","in":1,"on":"usable","subject":"cluster","state":"node kh-3400f4ebe24e-8-control-plane Ready=False (KubeletNotReady)"}
+{"at":24541,"ev":"wait","in":1,"on":"usable","subject":"cluster","done":true}
+{"at":24541,"ev":"phase","phase":"ready"}
+{"at":24542,"ev":"return","id":1}
+{"at":24542,"ev":"call","id":2,"fn":"InstallGateway","arg":"gateway-agentgateway"}
+{"at":24585,"ev":"call","id":3,"fn":"LoadImage","arg":"cr.agentgateway.dev/controller:v1.4.1@sha256:8b9e2bbe65b6a4b2ed93acd4fd0ede11f1eb2cfa8495e2b67c2d890e7fce8cec"}
+{"at":25573,"ev":"return","id":3}
+{"at":25604,"ev":"call","id":4,"fn":"LoadImage","arg":"cr.agentgateway.dev/agentgateway:v1.4.1@sha256:efd79355b89094a8225a9db465d9a01dc656b377f0bab458761b935a13231d29"}
+{"at":26775,"ev":"return","id":4}
+{"at":26842,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/backendtlspolicies.gateway.networking.k8s.io","state":"applied"}
+{"at":26853,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/gatewayclasses.gateway.networking.k8s.io","state":"applied"}
+{"at":26878,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/gateways.gateway.networking.k8s.io","state":"applied"}
+{"at":26904,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/grpcroutes.gateway.networking.k8s.io","state":"applied"}
+{"at":26978,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/httproutes.gateway.networking.k8s.io","state":"applied"}
+{"at":26988,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/listenersets.gateway.networking.k8s.io","state":"applied"}
+{"at":26993,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/referencegrants.gateway.networking.k8s.io","state":"applied"}
+{"at":27014,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/tcproutes.gateway.networking.k8s.io","state":"applied"}
+{"at":27035,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/tlsroutes.gateway.networking.k8s.io","state":"applied"}
+{"at":27053,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/udproutes.gateway.networking.k8s.io","state":"applied"}
+{"at":27060,"ev":"object","in":2,"api":"admissionregistration.k8s.io/v1","obj":"ValidatingAdmissionPolicy/safe-upgrades.gateway.networking.k8s.io","state":"applied"}
+{"at":27230,"ev":"object","in":2,"api":"admissionregistration.k8s.io/v1","obj":"ValidatingAdmissionPolicyBinding/safe-upgrades.gateway.networking.k8s.io","state":"applied"}
+{"at":27493,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/agentgatewaybackends.agentgateway.dev","state":"applied"}
+{"at":27658,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/agentgatewaymodels.agentgateway.dev","state":"applied"}
+{"at":27837,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/agentgatewayparameters.agentgateway.dev","state":"applied"}
+{"at":28084,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/agentgatewaypolicies.agentgateway.dev","state":"applied"}
+{"at":28912,"ev":"wait","in":2,"on":"crds","subject":"14 CRDs","done":true}
+{"at":28919,"ev":"object","in":2,"api":"v1","obj":"Namespace/agentgateway-system","state":"applied"}
+{"at":28922,"ev":"object","in":2,"api":"v1","obj":"ServiceAccount/agentgateway-system/agentgateway","state":"applied"}
+{"at":28925,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"ClusterRole/agentgateway-agentgateway-system","state":"applied"}
+{"at":28927,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"ClusterRoleBinding/agentgateway-role-agentgateway-system","state":"applied"}
+{"at":28932,"ev":"object","in":2,"api":"v1","obj":"Service/agentgateway-system/agentgateway","state":"applied"}
+{"at":28937,"ev":"object","in":2,"api":"apps/v1","obj":"Deployment/agentgateway-system/agentgateway","state":"applied"}
+{"at":28937,"ev":"wait","in":2,"on":"rollout","subject":"agentgateway-system/agentgateway","state":"controller has not observed the latest spec"}
+{"at":29442,"ev":"wait","in":2,"on":"rollout","subject":"agentgateway-system/agentgateway","state":"0 of 1 updated replicas available"}
+{"at":32968,"ev":"wait","in":2,"on":"rollout","subject":"agentgateway-system/agentgateway","state":"1 of 1 replicas available","done":true}
+{"at":32969,"ev":"pod","in":2,"api":"v1","owner":"Deployment/agentgateway-system/agentgateway","pod":"agentgateway-5c7fb5cf75-mdzkx","ready":true}
+{"at":32976,"ev":"object","in":2,"api":"agentgateway.dev/v1alpha1","obj":"AgentgatewayParameters/agentgateway-system/kubeharness","state":"applied"}
+{"at":32978,"ev":"object","in":2,"api":"gateway.networking.k8s.io/v1","obj":"GatewayClass/kubeharness","state":"applied"}
+{"at":32979,"ev":"wait","in":2,"on":"class","subject":"kubeharness","state":"condition Accepted=Unknown reason=Pending observedGeneration=0 (generation 1): Waiting for controller"}
+{"at":33484,"ev":"wait","in":2,"on":"class","subject":"kubeharness","done":true}
+{"at":33484,"ev":"return","id":2}
+{"at":33484,"ev":"call","id":5,"fn":"LoadImage","arg":"kubeharness.local/gateway-backend:test"}
+{"at":34000,"ev":"return","id":5}
+{"at":34001,"ev":"call","id":6,"fn":"Apply","arg":"testdata/g02"}
+{"at":34008,"ev":"object","in":6,"api":"v1","obj":"Namespace/shop","state":"applied"}
+{"at":34010,"ev":"object","in":6,"api":"v1","obj":"Namespace/payments","state":"applied"}
+{"at":34013,"ev":"object","in":6,"api":"gateway.networking.k8s.io/v1","obj":"Gateway/shop/edge","state":"applied"}
+{"at":34017,"ev":"object","in":6,"api":"gateway.networking.k8s.io/v1","obj":"HTTPRoute/shop/pay","state":"applied"}
+{"at":34020,"ev":"object","in":6,"api":"apps/v1","obj":"Deployment/shop/orders","state":"applied"}
+{"at":34027,"ev":"object","in":6,"api":"v1","obj":"Service/shop/orders","state":"applied"}
+{"at":34030,"ev":"object","in":6,"api":"apps/v1","obj":"Deployment/payments/payments","state":"applied"}
+{"at":34035,"ev":"object","in":6,"api":"v1","obj":"Service/payments/payments","state":"applied"}
+{"at":34035,"ev":"return","id":6}
+{"at":34035,"ev":"call","id":7,"fn":"WaitReady","arg":"shop/orders"}
+{"at":34037,"ev":"wait","in":7,"on":"rollout","subject":"shop/orders","state":"0 of 1 updated replicas available"}
+{"at":34538,"ev":"wait","in":7,"on":"rollout","subject":"shop/orders","state":"1 of 1 replicas available","done":true}
+{"at":34539,"ev":"pod","in":7,"api":"v1","owner":"Deployment/shop/orders","pod":"orders-686cfdb7b8-t7446","ready":true}
+{"at":34539,"ev":"return","id":7}
+{"at":34539,"ev":"call","id":8,"fn":"WaitReady","arg":"payments/payments"}
+{"at":34540,"ev":"wait","in":8,"on":"rollout","subject":"payments/payments","state":"1 of 1 replicas available","done":true}
+{"at":34541,"ev":"pod","in":8,"api":"v1","owner":"Deployment/payments/payments","pod":"payments-84fbfc66d8-5bq97","ready":true}
+{"at":34541,"ev":"return","id":8}
+{"at":34541,"ev":"call","id":9,"fn":"Gateway","arg":"shop/edge"}
+{"at":34543,"ev":"wait","in":9,"on":"gateway","subject":"shop/edge","state":"service shop/edge ports [80]","done":true}
+{"at":37081,"ev":"pod","in":9,"api":"v1","owner":"Service/shop/edge","pod":"edge-dbc5584f7-h2hg9","ready":true}
+{"at":37081,"ev":"forward","in":9,"svc":"shop/edge","port":80,"pod":"edge-dbc5584f7-h2hg9","local":"127.0.0.1:57916"}
+{"at":37081,"ev":"return","id":9}
+{"at":37082,"ev":"call","id":10,"fn":"Forward","arg":"payments/payments:80"}
+{"at":37096,"ev":"pod","in":10,"api":"v1","owner":"Service/payments/payments","pod":"payments-84fbfc66d8-5bq97","ready":true}
+{"at":37096,"ev":"forward","in":10,"svc":"payments/payments","port":80,"pod":"payments-84fbfc66d8-5bq97","local":"127.0.0.1:57918"}
+{"at":37096,"ev":"return","id":10}
+{"at":37096,"ev":"call","id":11,"fn":"AwaitRoute","arg":"shop/pay"}
+{"at":37097,"ev":"wait","in":11,"on":"route","subject":"shop/pay","state":"Accepted=True ResolvedRefs=False reason=RefNotPermitted: backendRef payments/payments not accessible to a HTTPRoute in namespace \"shop\" (missing a ReferenceGrant?)","done":true}
+{"at":37097,"ev":"return","id":11}
+{"at":37097,"ev":"call","id":12,"fn":"AwaitResponse","arg":"GET http://shop.example/orders"}
+{"at":37097,"ev":"request","id":13,"in":12,"via":"await","method":"GET","url":"http://shop.example/orders"}
+{"at":37101,"ev":"response","id":13,"status":200,"ms":3}
+{"at":37101,"ev":"body","id":13,"head":"{\"backend\":\"orders\",\"path\":\"/orders\",\"host\":\"shop.example\"}\n"}
+{"at":37101,"ev":"wait","in":12,"on":"response","subject":"GET http://shop.example/orders","state":"200 OK","done":true}
+{"at":37101,"ev":"return","id":12}
+{"at":37104,"ev":"request","id":14,"via":"client","method":"GET","url":"http://shop.example/payments"}
+{"at":37106,"ev":"response","id":14,"status":500,"ms":1}
+{"at":37106,"ev":"request","id":15,"via":"client","method":"GET","url":"http://shop.example/payments"}
+{"at":37106,"ev":"response","id":15,"status":500,"ms":0}
+{"at":37106,"ev":"request","id":16,"via":"client","method":"GET","url":"http://shop.example/payments"}
+{"at":37107,"ev":"response","id":16,"status":500,"ms":0}
+{"at":37107,"ev":"request","id":17,"via":"client","method":"GET","url":"http://shop.example/payments"}
+{"at":37108,"ev":"response","id":17,"status":500,"ms":0}
+{"at":37108,"ev":"request","id":18,"via":"client","method":"GET","url":"http://shop.example/payments"}
+{"at":37108,"ev":"response","id":18,"status":500,"ms":0}
+{"at":37109,"ev":"call","id":19,"fn":"Apply","arg":"testdata/g02-grant"}
+{"at":37115,"ev":"object","in":19,"api":"gateway.networking.k8s.io/v1beta1","obj":"ReferenceGrant/payments/payments","state":"applied"}
+{"at":37115,"ev":"return","id":19}
+{"at":37115,"ev":"call","id":20,"fn":"AwaitRoute","arg":"shop/pay"}
+{"at":37116,"ev":"wait","in":20,"on":"route","subject":"shop/pay","state":"check: ResolvedRefs=False reason=RefNotPermitted: backendRef payments/payments not accessible to a HTTPRoute in namespace \"shop\" (missing a ReferenceGrant?); conditions Accepted=True ResolvedRefs=Fal…"}
+{"at":37621,"ev":"wait","in":20,"on":"route","subject":"shop/pay","state":"Accepted=True ResolvedRefs=True","done":true}
+{"at":37621,"ev":"return","id":20}
+{"at":37622,"ev":"call","id":21,"fn":"AwaitResponse","arg":"GET http://shop.example/payments"}
+{"at":37622,"ev":"request","id":22,"in":21,"via":"await","method":"GET","url":"http://shop.example/payments"}
+{"at":37625,"ev":"response","id":22,"status":200,"ms":2}
+{"at":37625,"ev":"body","id":22,"head":"{\"backend\":\"payments\",\"path\":\"/payments\",\"host\":\"shop.example\"}\n"}
+{"at":37625,"ev":"wait","in":21,"on":"response","subject":"GET http://shop.example/payments","state":"200 OK","done":true}
+{"at":37625,"ev":"return","id":21}
+{"at":37626,"ev":"call","id":23,"fn":"Delete","arg":"testdata/g02-grant"}
+{"at":37631,"ev":"object","in":23,"api":"gateway.networking.k8s.io/v1beta1","obj":"ReferenceGrant/payments/payments","state":"deleting"}
+{"at":37633,"ev":"object","in":23,"api":"gateway.networking.k8s.io/v1beta1","obj":"ReferenceGrant/payments/payments","state":"gone"}
+{"at":37633,"ev":"return","id":23}
+{"at":37633,"ev":"call","id":24,"fn":"AwaitRoute","arg":"shop/pay"}
+{"at":37634,"ev":"wait","in":24,"on":"route","subject":"shop/pay","state":"check: ResolvedRefs=True reason=ResolvedRefs, want False reason=RefNotPermitted; conditions Accepted=True ResolvedRefs=True"}
+{"at":38138,"ev":"wait","in":24,"on":"route","subject":"shop/pay","state":"Accepted=True ResolvedRefs=False reason=RefNotPermitted: backendRef payments/payments not accessible to a HTTPRoute in namespace \"shop\" (missing a ReferenceGrant?)","done":true}
+{"at":38138,"ev":"return","id":24}
+{"at":38138,"ev":"call","id":25,"fn":"AwaitResponse","arg":"GET http://shop.example/orders"}
+{"at":38138,"ev":"request","id":26,"in":25,"via":"await","method":"GET","url":"http://shop.example/orders"}
+{"at":38141,"ev":"response","id":26,"status":200,"ms":3}
+{"at":38141,"ev":"body","id":26,"head":"{\"backend\":\"orders\",\"path\":\"/orders\",\"host\":\"shop.example\"}\n"}
+{"at":38141,"ev":"wait","in":25,"on":"response","subject":"GET http://shop.example/orders","state":"200 OK","done":true}
+{"at":38142,"ev":"return","id":25}
+{"at":38142,"ev":"request","id":27,"via":"client","method":"GET","url":"http://shop.example/payments"}
+{"at":38143,"ev":"response","id":27,"status":500,"ms":0}
+{"at":38143,"ev":"request","id":28,"via":"client","method":"GET","url":"http://shop.example/payments"}
+{"at":38144,"ev":"response","id":28,"status":500,"ms":0}
+{"at":38144,"ev":"request","id":29,"via":"client","method":"GET","url":"http://shop.example/payments"}
+{"at":38144,"ev":"response","id":29,"status":500,"ms":0}
+{"at":38144,"ev":"request","id":30,"via":"client","method":"GET","url":"http://shop.example/payments"}
+{"at":38145,"ev":"response","id":30,"status":500,"ms":0}
+{"at":38145,"ev":"request","id":31,"via":"client","method":"GET","url":"http://shop.example/payments"}
+{"at":38146,"ev":"response","id":31,"status":500,"ms":0}
+{"at":38147,"ev":"call","id":32,"fn":"Cleanup","arg":"ok"}
+{"at":38513,"ev":"report","in":32,"line":"kubeharness cluster=kh-3400f4ebe24e-8 phase=ready cause=ok cleanup=succeeded remaining=0 create=8.7s ready=15.8s delete=370ms profile=gateway-agentgateway install=6.7s"}
+{"at":38513,"ev":"return","id":32}

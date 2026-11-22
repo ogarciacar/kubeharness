@@ -24,6 +24,8 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
+
+	"github.com/ogarciacar/kubeharness/internal/trace"
 )
 
 // DefaultNamespace is where namespaced objects without a namespace go.
@@ -157,6 +159,7 @@ func Apply(ctx context.Context, cfg *rest.Config, objs []*unstructured.Unstructu
 	if err != nil {
 		return nil, err
 	}
+	s := trace.From(ctx)
 	var applied []ObjectRef
 	for _, obj := range objs {
 		res, ref, err := bind(ctx, cfg, &mapper, client, obj, true)
@@ -170,6 +173,7 @@ func Apply(ctx context.Context, cfg *rest.Config, objs []*unstructured.Unstructu
 		if _, err := res.Patch(ctx, obj.GetName(), types.ApplyPatchType, data, metav1.PatchOptions{FieldManager: "kubeharness", Force: ptr(true)}); err != nil {
 			return applied, fmt.Errorf("apply %s: %w", ref, err)
 		}
+		s.Object(ref.GVK.GroupVersion().String(), ref.String(), trace.Applied)
 		applied = append(applied, ref)
 	}
 	return applied, nil
@@ -190,6 +194,7 @@ func Delete(ctx context.Context, cfg *rest.Config, objs []*unstructured.Unstruct
 }
 
 func deleteEach(ctx context.Context, cfg *rest.Config, mapper *meta.RESTMapper, client dynamic.Interface, objs []*unstructured.Unstructured) error {
+	s := trace.From(ctx)
 	for i := len(objs) - 1; i >= 0; i-- {
 		res, ref, err := bind(ctx, cfg, mapper, client, objs[i], false)
 		if errors.Is(err, errNotServed) {
@@ -201,20 +206,24 @@ func deleteEach(ctx context.Context, cfg *rest.Config, mapper *meta.RESTMapper, 
 		pol := metav1.DeletePropagationBackground
 		err = res.Delete(ctx, ref.Name, metav1.DeleteOptions{PropagationPolicy: &pol})
 		if apierrors.IsNotFound(err) {
+			s.Object(ref.GVK.GroupVersion().String(), ref.String(), trace.Gone)
 			continue
 		}
 		if err != nil {
 			got, gerr := res.Get(ctx, ref.Name, metav1.GetOptions{})
 			if apierrors.IsNotFound(gerr) {
+				s.Object(ref.GVK.GroupVersion().String(), ref.String(), trace.Gone)
 				continue
 			}
 			if gerr != nil || !alreadyDeleting(got) {
 				return fmt.Errorf("delete %s: %w", ref, err)
 			}
 		}
+		s.Object(ref.GVK.GroupVersion().String(), ref.String(), trace.Deleting)
 		if err := waitAbsent(ctx, res, ref); err != nil {
 			return err
 		}
+		s.Object(ref.GVK.GroupVersion().String(), ref.String(), trace.Gone)
 	}
 	return nil
 }
