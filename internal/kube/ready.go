@@ -8,6 +8,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
@@ -16,9 +17,10 @@ import (
 	"github.com/ogarciacar/kubeharness/internal/trace"
 )
 
-// WaitUsable polls until the API answers, every node is Ready, and the
-// default ServiceAccount exists. Pods cannot be created before that account
-// appears, so node readiness alone is not usable readiness.
+// WaitUsable polls until the API answers, every node is Ready, the default
+// ServiceAccount exists, and cluster DNS has a ready endpoint. Pods cannot be
+// created before that account appears, and cannot resolve a Service name
+// before CoreDNS is ready, so node readiness alone is not usable readiness.
 func WaitUsable(ctx context.Context, kubeconfigPath string) error {
 	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
 	if err != nil {
@@ -72,7 +74,22 @@ func observeUsable(ctx context.Context, client kubernetes.Interface) error {
 	if _, err := client.CoreV1().ServiceAccounts("default").Get(ctx, "default", metav1.GetOptions{}); err != nil {
 		return fmt.Errorf("default ServiceAccount missing: %v", err)
 	}
-	return nil
+	return clusterDNSReady(ctx, client)
+}
+
+func clusterDNSReady(ctx context.Context, client kubernetes.Interface) error {
+	list, err := client.DiscoveryV1().EndpointSlices("kube-system").List(ctx, metav1.ListOptions{LabelSelector: discoveryv1.LabelServiceName + "=kube-dns"})
+	if err != nil {
+		return fmt.Errorf("list kube-dns endpoints: %v", err)
+	}
+	for _, s := range list.Items {
+		for _, e := range s.Endpoints {
+			if e.Conditions.Ready != nil && *e.Conditions.Ready {
+				return nil
+			}
+		}
+	}
+	return errors.New("cluster DNS not ready: kube-dns has no ready endpoint")
 }
 
 func nodeReady(n corev1.Node) (corev1.ConditionStatus, string) {

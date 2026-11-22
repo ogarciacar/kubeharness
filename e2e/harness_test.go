@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/kind/pkg/cluster"
@@ -76,6 +77,15 @@ func TestNewOwnedClusterIsUsableAndDisposed(t *testing.T) {
 		h := kubeharness.New(t)
 		name = h.ClusterName()
 		client := kubernetes.NewForConfigOrDie(h.RESTConfig())
+		dns, err := client.DiscoveryV1().EndpointSlices("kube-system").List(t.Context(), metav1.ListOptions{LabelSelector: discoveryv1.LabelServiceName + "=kube-dns"})
+		if err != nil {
+			t.Fatalf("list kube-dns EndpointSlices: %v", err)
+		}
+		if !slices.ContainsFunc(dns.Items, func(s discoveryv1.EndpointSlice) bool {
+			return slices.ContainsFunc(s.Endpoints, func(e discoveryv1.Endpoint) bool { return e.Conditions.Ready != nil && *e.Conditions.Ready })
+		}) {
+			t.Fatal("cluster reported usable before cluster DNS had a ready kube-dns endpoint")
+		}
 		pod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "probe"},
 			Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "pause", Image: "registry.k8s.io/pause:3.10"}}},

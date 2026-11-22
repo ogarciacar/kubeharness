@@ -65,6 +65,7 @@ Each decision has an Architecture Decision Record in `docs/adr/` ([D27](docs/adr
 | [D33](docs/adr/0033-agentgateway-recipe-shares-the-gateway-api-pin.md) | `AgentGateway()` installs agentgateway v1.4.1 with shared Gateway API v1.6.1, hand-written `kubeharness` class + ClusterIP `AgentgatewayParameters`; CEL validations stripped at render; pinned images Kind-loaded when needed | Accepted |
 | [D34](docs/adr/0034-gateways-expose-one-protocol-neutral-probe-wait.md) | `Gateway.AwaitProbe` retries a multi-request exchange on the Gateway transport; evidence prints non-Service backend status from CRD-derived kinds; MCP clients stay in examples | Accepted |
 | [D35](docs/adr/0035-every-harness-writes-a-diagnostic-trace.md) | Every `Harness` writes a versioned JSONL trace of its calls, phases, waits, objects, Pods, forwards, and Gateway requests into `t.ArtifactDir()`, kept only with `go test -artifacts`; `internal/trace` is the only writer and redacts; no switch and no exported API change | Accepted |
+| [D36](docs/adr/0036-a-usable-cluster-resolves-service-names.md) | `wait-usable` also waits for a ready `kube-dns` endpoint, so a test's first Pod can resolve Service names | Accepted |
 
 **Clarification:** The Kubernetes **Gateway API is an API specification**, not a built-in gateway data plane. Using a “native Gateway API” does not remove the need for a controller/proxy. Envoy Gateway is the initial default implementation.
 

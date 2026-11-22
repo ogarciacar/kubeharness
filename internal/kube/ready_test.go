@@ -14,6 +14,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 
@@ -27,9 +28,17 @@ func readyNode(status corev1.ConditionStatus, reason string) *corev1.Node {
 	}
 }
 
-func TestUsableRequiresReadyNodesAndDefaultServiceAccount(t *testing.T) {
+func dnsSlice(ready bool) *discoveryv1.EndpointSlice {
+	return &discoveryv1.EndpointSlice{
+		ObjectMeta: metav1.ObjectMeta{Name: "kube-dns-x", Namespace: "kube-system", Labels: map[string]string{discoveryv1.LabelServiceName: "kube-dns"}},
+		Endpoints:  []discoveryv1.Endpoint{{Addresses: []string{"10.244.0.2"}, Conditions: discoveryv1.EndpointConditions{Ready: &ready}}},
+	}
+}
+
+func TestUsableRequiresReadyNodesDefaultServiceAccountAndClusterDNS(t *testing.T) {
 	ctx := context.Background()
 	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}}
+	node := readyNode(corev1.ConditionTrue, "")
 	cases := []struct {
 		name    string
 		objects []any
@@ -38,8 +47,10 @@ func TestUsableRequiresReadyNodesAndDefaultServiceAccount(t *testing.T) {
 		{"no nodes", nil, "no nodes registered"},
 		{"node not ready", []any{readyNode(corev1.ConditionFalse, "KubeletNotReady"), sa}, "KubeletNotReady"},
 		{"node ready unknown", []any{readyNode(corev1.ConditionUnknown, "NodeStatusUnknown"), sa}, "NodeStatusUnknown"},
-		{"no default service account", []any{readyNode(corev1.ConditionTrue, "")}, "ServiceAccount"},
-		{"usable", []any{readyNode(corev1.ConditionTrue, ""), sa}, ""},
+		{"no default service account", []any{node, dnsSlice(true)}, "ServiceAccount"},
+		{"no cluster DNS endpoint", []any{node, sa}, "kube-dns"},
+		{"cluster DNS not ready", []any{node, sa, dnsSlice(false)}, "kube-dns"},
+		{"usable", []any{node, sa, dnsSlice(true)}, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -49,6 +60,8 @@ func TestUsableRequiresReadyNodesAndDefaultServiceAccount(t *testing.T) {
 				case *corev1.Node:
 					client.Tracker().Add(o)
 				case *corev1.ServiceAccount:
+					client.Tracker().Add(o)
+				case *discoveryv1.EndpointSlice:
 					client.Tracker().Add(o)
 				}
 			}
@@ -108,7 +121,7 @@ func TestWaitUsableStopsAtItsDeadlineWhenTheAPIServerNeverAnswers(t *testing.T) 
 }
 
 func TestEveryReadinessCallHonoursTheDeadline(t *testing.T) {
-	for _, hang := range []string{"/api/v1/nodes", "/api/v1/namespaces/default/serviceaccounts/default"} {
+	for _, hang := range []string{"/api/v1/nodes", "/api/v1/namespaces/default/serviceaccounts/default", "/apis/discovery.k8s.io/v1/namespaces/kube-system/endpointslices"} {
 		t.Run(hang, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
@@ -119,6 +132,8 @@ func TestEveryReadinessCallHonoursTheDeadline(t *testing.T) {
 					fmt.Fprint(w, `{"major":"1","minor":"37","gitVersion":"v1.37.0"}`)
 				case "/api/v1/nodes":
 					fmt.Fprint(w, `{"kind":"NodeList","apiVersion":"v1","items":[{"metadata":{"name":"n"},"status":{"conditions":[{"type":"Ready","status":"True"}]}}]}`)
+				case "/api/v1/namespaces/default/serviceaccounts/default":
+					fmt.Fprint(w, `{"kind":"ServiceAccount","apiVersion":"v1","metadata":{"name":"default","namespace":"default"}}`)
 				default:
 					http.NotFound(w, r)
 				}

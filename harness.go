@@ -67,7 +67,8 @@ const (
 
 const deleteTimeout = time.Minute
 
-// New creates a Kind cluster owned by t and waits until it accepts workloads.
+// New creates a Kind cluster owned by t and waits until it accepts workloads
+// and its Pods can resolve Service names.
 // A setup failure fails the test immediately. Cleanup always runs, and a
 // cleanup failure is reported as its own test error.
 //
