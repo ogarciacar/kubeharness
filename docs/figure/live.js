@@ -69,6 +69,7 @@ const TOUR = [
   ["gateway-api", "G03"],
   ["gateway-agentgateway", "G01"],
   ["gateway-agentgateway", "A01"],
+  ["gateway-agentgateway", "K01"],
   ["gateway-agentgateway", "G02"],
   ["gateway-agentgateway", "G03"],
 ];
@@ -100,7 +101,7 @@ function stepsFor(profile, scenario) {
   for (const s of sc.steps) {
     if (s.lever) lever = s.lever;
     if (s.gate !== undefined) gateOpen = s.gate;
-    if (s.display) shown = s.display;
+    if (s.display !== undefined) shown = s.display;
     const pulses = s.send ? Array.from({ length: s.burst ?? 1 }, (_, b) => ({ to: s.send, delay: b * 0.2 })) : [];
     out.push({ ...s, lamp: 5, phase: "ready", cart: 0, show: true, installed: true, gate: gateOpen, lever, display: shown, test: true, pulses });
   }

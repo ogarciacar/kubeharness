@@ -74,6 +74,8 @@ export function describe(events, source = "trace") {
 
 const backendIn = (head) => /"backend"\s*:\s*"([^"]+)"/.exec(head)?.[1];
 
+export const modelIn = (head) => /"model"\s*:\s*"([^"]+)"/.exec(head)?.[1];
+
 /**
  * Where one request's pulse ends: "a" | "b" (a post), "gate", or "none" (the
  * diverter). A 2xx goes to the backend its body names; the G02 burst closes
@@ -122,14 +124,15 @@ function exchanges(events, facts) {
     const r = res.get(e.id);
     const to = outletOf(e, r, body.get(e.id), facts);
     const answer = answerOf(e, body.get(e.id), facts.mcp);
+    const model = facts.models ? modelIn(body.get(e.id)?.head ?? "") : undefined;
     const said = answer ? `${answer.method}${answer.text ? ` = ${answer.text}` : ""}` : "";
-    const key = `${e.via} ${e.method} ${e.url} ${r?.status ?? r?.err} ${to} ${said}`;
-    if (run?.key !== key) run = { key, count: 0, e, r, to, answer, said };
+    const key = `${e.via} ${e.method} ${e.url} ${r?.status ?? r?.err} ${to} ${said} ${model}`;
+    if (run?.key !== key) run = { key, count: 0, e, r, to, answer, said, model };
     run.count++;
     out.set(e.id, run);
   }
   for (const x of out.values()) {
-    const name = Object.keys(facts.posts).find((n) => facts.posts[n] === x.to);
+    const name = x.model ?? Object.keys(facts.posts).find((n) => facts.posts[n] === x.to);
     x.text = `${x.e.method} ${x.e.url} → ${x.r?.status ?? x.r?.err ?? "no response"}${name ? ` from ${name}` : ""}${x.count > 1 ? ` ×${x.count}` : ""}${x.said ? ` · ${x.said}` : ""}`;
   }
   return out;
@@ -170,7 +173,7 @@ const flipOf = (e, x) => (e.state === "applied" && e.obj === `HTTPRoute/${x.fact
 
 export const ON = {
   trace: (s, e) => ({ ...s, cluster: e.cluster }),
-  call: (s, e, x) => ({ ...s, calls: [...s.calls, { id: e.id, fn: e.fn, text: callText(e, x.facts) }], obs: "", ...CALL_ENTER[e.fn]?.(s, e) }),
+  call: (s, e, x) => ({ ...s, calls: [...s.calls, { id: e.id, fn: e.fn, text: callText(e, x.facts) }], obs: "", ...(s.model !== undefined && !x.senders.has(e.id) && { model: -1, display: "" }), ...CALL_ENTER[e.fn]?.(s, e) }),
   return: (s, e, x) => ({ ...s, calls: s.calls.filter((c) => c.id !== e.id), last: s.calls.find((c) => c.id === e.id)?.text ?? "", mcp: false, checks: x.checkIds.has(e.id) ? { ...s.checks, [e.id]: e.failed ? "fail" : "pass" } : s.checks, ...CALL_EXIT[s.calls.find((c) => c.id === e.id)?.fn]?.(s, e) }),
   phase: (s, e) => ({ ...s, lamp: LAMPS.indexOf(e.phase), phase: e.phase, obs: `phase=${e.phase}` }),
   wait: (s, e, x) => ({ ...s, obs: waitText(e), ...WAIT_BENCH[e.on]?.(s, e, x.facts) }),
@@ -189,7 +192,8 @@ export const ON = {
     const lag = f.gate && run.to === f.paths[f.gate.path] && !s.gate ? " · proxy still routing after ResolvedRefs=False" : "";
     const mcp = !!f.mcp && new URL(e.url).pathname.startsWith(f.mcp.path);
     const display = run.answer && run.answer.method === f.mcp.display ? run.answer.text : s.display;
-    return { ...s, lever: f.weights ? s.lever : LEVER[run.to], mcp, display, obs: run.text + lag, last: "", pulse: run.to };
+    const model = f.models ? { model: Object.keys(f.models).indexOf(run.model), display: f.models[run.model]?.tag ?? "" } : {};
+    return { ...s, lever: f.weights ? s.lever : LEVER[run.to], mcp, display, ...model, obs: run.text + lag, last: "", pulse: run.to };
   },
   response: (s) => s,
   body: (s) => s,
@@ -316,7 +320,7 @@ export function reportText(s) {
   return s.report ?? `kubeharness cluster=${s.cluster} phase=${s.phase}${s.profile ? ` profile=${s.profile}` : ""}`;
 }
 
-const view = (s, x) => ({ checks: x.checks.map((c) => s.checks[c.id] ?? "wait"), verdict: s.verdict, stopped: s.stopped, lamp: s.lamp, phase: s.phase, cart: s.cart, show: s.show, gate: s.gate, lever: s.lever, ready: s.ready, mcp: s.mcp, display: s.display, say: sayText(s), report: reportText(s), plate: s.cluster });
+const view = (s, x) => ({ checks: x.checks.map((c) => s.checks[c.id] ?? "wait"), verdict: s.verdict, stopped: s.stopped, lamp: s.lamp, phase: s.phase, cart: s.cart, show: s.show, gate: s.gate, lever: s.lever, ready: s.ready, mcp: s.mcp, display: s.display, model: s.model, say: sayText(s), report: reportText(s), plate: s.cluster });
 
 /**
  * Fold the trace and cut a step wherever the drawn state, the say line or the
@@ -328,10 +332,10 @@ const view = (s, x) => ({ checks: x.checks.map((c) => s.checks[c.id] ?? "wait"),
  */
 export function stepsFromTrace(events, facts, { tail = 1.2 } = {}) {
   const checks = checksOf(events);
-  const x = { facts, ex: exchanges(events, facts), calls: callsOf(events), checks, checkIds: new Set(checks.map((c) => c.id)) };
+  const x = { facts, ex: exchanges(events, facts), calls: callsOf(events), senders: new Set(events.filter((e) => e.ev === "request").map((e) => e.in)), checks, checkIds: new Set(checks.map((c) => c.id)) };
   const objects = objectsOf(events, facts);
   const touched = [];
-  let s = { lamp: 0, phase: "new", cart: 1, show: false, gate: !facts.gate, lever: "none", ready: { a: false, b: false }, mcp: false, display: "", calls: [], last: "", obs: "", report: null, cluster: "", profile: "", checks: {}, verdict: null, stopped: -1 };
+  let s = { lamp: 0, phase: "new", cart: 1, show: false, gate: !facts.gate, lever: "none", ready: { a: false, b: false }, mcp: false, display: "", model: facts.models ? -1 : undefined, calls: [], last: "", obs: "", report: null, cluster: "", profile: "", checks: {}, verdict: null, stopped: -1 };
   const steps = [];
   for (const e of events) {
     const before = s;

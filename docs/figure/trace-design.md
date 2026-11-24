@@ -1,6 +1,6 @@
 # Design: replay a real e2e run in the figure
 
-Status: implemented. The figure side is `replay.mjs`, `build.mjs --traces` and `live.js`. This design was written for G02; the replay now also plays G01, G03 and A01 from the same schema, through per-scenario tables in `model.mjs` `REPLAY` (see `README.md` "Replay a recorded run").
+Status: implemented. The figure side is `replay.mjs`, `build.mjs --traces` and `live.js`. This design was written for G02; the replay now also plays G01, G03, A01 and K01 from the same schema, through per-scenario tables in `model.mjs` `REPLAY` (see `README.md` "Replay a recorded run").
 
 ## Problem
 

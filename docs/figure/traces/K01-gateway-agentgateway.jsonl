@@ -1,0 +1,131 @@
+{"at":0,"ev":"trace","v":1,"test":"TestK01Routing","cluster":"kh-a062955cacf2-1","start":"2026-11-23T14:10:08.427Z"}
+{"at":0,"ev":"call","id":1,"fn":"New"}
+{"at":0,"ev":"phase","phase":"validating"}
+{"at":25,"ev":"phase","phase":"provisioning"}
+{"at":8923,"ev":"phase","phase":"wait-usable"}
+{"at":8933,"ev":"wait","in":1,"on":"usable","subject":"cluster","state":"node kh-a062955cacf2-1-control-plane Ready=False (KubeletNotReady)"}
+{"at":24736,"ev":"wait","in":1,"on":"usable","subject":"cluster","state":"cluster DNS not ready: kube-dns has no ready endpoint"}
+{"at":26270,"ev":"wait","in":1,"on":"usable","subject":"cluster","done":true}
+{"at":26270,"ev":"phase","phase":"ready"}
+{"at":26273,"ev":"return","id":1}
+{"at":26359,"ev":"call","id":2,"fn":"InstallGateway","arg":"gateway-agentgateway"}
+{"at":26398,"ev":"call","id":3,"fn":"LoadImage","arg":"cr.agentgateway.dev/controller:v1.4.1@sha256:8b9e2bbe65b6a4b2ed93acd4fd0ede11f1eb2cfa8495e2b67c2d890e7fce8cec"}
+{"at":27319,"ev":"return","id":3}
+{"at":27367,"ev":"call","id":4,"fn":"LoadImage","arg":"cr.agentgateway.dev/agentgateway:v1.4.1@sha256:efd79355b89094a8225a9db465d9a01dc656b377f0bab458761b935a13231d29"}
+{"at":28416,"ev":"return","id":4}
+{"at":28514,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/backendtlspolicies.gateway.networking.k8s.io","state":"applied"}
+{"at":28520,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/gatewayclasses.gateway.networking.k8s.io","state":"applied"}
+{"at":28552,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/gateways.gateway.networking.k8s.io","state":"applied"}
+{"at":28578,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/grpcroutes.gateway.networking.k8s.io","state":"applied"}
+{"at":28646,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/httproutes.gateway.networking.k8s.io","state":"applied"}
+{"at":28661,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/listenersets.gateway.networking.k8s.io","state":"applied"}
+{"at":28665,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/referencegrants.gateway.networking.k8s.io","state":"applied"}
+{"at":28679,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/tcproutes.gateway.networking.k8s.io","state":"applied"}
+{"at":28696,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/tlsroutes.gateway.networking.k8s.io","state":"applied"}
+{"at":28714,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/udproutes.gateway.networking.k8s.io","state":"applied"}
+{"at":28719,"ev":"object","in":2,"api":"admissionregistration.k8s.io/v1","obj":"ValidatingAdmissionPolicy/safe-upgrades.gateway.networking.k8s.io","state":"applied"}
+{"at":28900,"ev":"object","in":2,"api":"admissionregistration.k8s.io/v1","obj":"ValidatingAdmissionPolicyBinding/safe-upgrades.gateway.networking.k8s.io","state":"applied"}
+{"at":29193,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/agentgatewaybackends.agentgateway.dev","state":"applied"}
+{"at":29317,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/agentgatewaymodels.agentgateway.dev","state":"applied"}
+{"at":29508,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/agentgatewayparameters.agentgateway.dev","state":"applied"}
+{"at":29762,"ev":"object","in":2,"api":"apiextensions.k8s.io/v1","obj":"CustomResourceDefinition/agentgatewaypolicies.agentgateway.dev","state":"applied"}
+{"at":30589,"ev":"wait","in":2,"on":"crds","subject":"14 CRDs","done":true}
+{"at":30604,"ev":"object","in":2,"api":"v1","obj":"Namespace/agentgateway-system","state":"applied"}
+{"at":30607,"ev":"object","in":2,"api":"v1","obj":"ServiceAccount/agentgateway-system/agentgateway","state":"applied"}
+{"at":30609,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"ClusterRole/agentgateway-agentgateway-system","state":"applied"}
+{"at":30612,"ev":"object","in":2,"api":"rbac.authorization.k8s.io/v1","obj":"ClusterRoleBinding/agentgateway-role-agentgateway-system","state":"applied"}
+{"at":30617,"ev":"object","in":2,"api":"v1","obj":"Service/agentgateway-system/agentgateway","state":"applied"}
+{"at":30622,"ev":"object","in":2,"api":"apps/v1","obj":"Deployment/agentgateway-system/agentgateway","state":"applied"}
+{"at":30623,"ev":"wait","in":2,"on":"rollout","subject":"agentgateway-system/agentgateway","state":"controller has not observed the latest spec"}
+{"at":31126,"ev":"wait","in":2,"on":"rollout","subject":"agentgateway-system/agentgateway","state":"0 of 1 updated replicas available"}
+{"at":34160,"ev":"wait","in":2,"on":"rollout","subject":"agentgateway-system/agentgateway","state":"1 of 1 replicas available","done":true}
+{"at":34163,"ev":"pod","in":2,"api":"v1","owner":"Deployment/agentgateway-system/agentgateway","pod":"agentgateway-5c7fb5cf75-gptg9","ready":true}
+{"at":34171,"ev":"object","in":2,"api":"agentgateway.dev/v1alpha1","obj":"AgentgatewayParameters/agentgateway-system/kubeharness","state":"applied"}
+{"at":34173,"ev":"object","in":2,"api":"gateway.networking.k8s.io/v1","obj":"GatewayClass/kubeharness","state":"applied"}
+{"at":34175,"ev":"wait","in":2,"on":"class","subject":"kubeharness","state":"condition Accepted=Unknown reason=Pending observedGeneration=0 (generation 1): Waiting for controller"}
+{"at":34683,"ev":"wait","in":2,"on":"class","subject":"kubeharness","done":true}
+{"at":34683,"ev":"return","id":2}
+{"at":35851,"ev":"call","id":5,"fn":"LoadImage","arg":"kubeharness.local/kronk-k01:test"}
+{"at":60151,"ev":"return","id":5}
+{"at":60151,"ev":"call","id":6,"fn":"Apply","arg":"testdata/k01"}
+{"at":60157,"ev":"object","in":6,"api":"agentgateway.dev/v1alpha1","obj":"AgentgatewayBackend/default/qwen","state":"applied"}
+{"at":60159,"ev":"object","in":6,"api":"agentgateway.dev/v1alpha1","obj":"AgentgatewayBackend/default/smol","state":"applied"}
+{"at":60161,"ev":"object","in":6,"api":"agentgateway.dev/v1alpha1","obj":"AgentgatewayBackend/default/gemma","state":"applied"}
+{"at":60163,"ev":"object","in":6,"api":"gateway.networking.k8s.io/v1","obj":"Gateway/default/edge","state":"applied"}
+{"at":60166,"ev":"object","in":6,"api":"apps/v1","obj":"Deployment/default/kronk","state":"applied"}
+{"at":60170,"ev":"object","in":6,"api":"v1","obj":"Service/default/kronk","state":"applied"}
+{"at":60170,"ev":"return","id":6}
+{"at":60170,"ev":"call","id":7,"fn":"Apply","arg":"testdata/k01-route/good"}
+{"at":60182,"ev":"object","in":7,"api":"gateway.networking.k8s.io/v1","obj":"HTTPRoute/default/llm","state":"applied"}
+{"at":60182,"ev":"return","id":7}
+{"at":60182,"ev":"call","id":8,"fn":"WaitReady","arg":"kronk"}
+{"at":60183,"ev":"wait","in":8,"on":"rollout","subject":"default/kronk","state":"0 of 1 replicas updated"}
+{"at":60686,"ev":"wait","in":8,"on":"rollout","subject":"default/kronk","state":"0 of 1 updated replicas available"}
+{"at":64718,"ev":"wait","in":8,"on":"rollout","subject":"default/kronk","state":"1 of 1 replicas available","done":true}
+{"at":64722,"ev":"pod","in":8,"api":"v1","owner":"Deployment/default/kronk","pod":"kronk-78998884f7-dwnqt","ready":true}
+{"at":64722,"ev":"return","id":8}
+{"at":64724,"ev":"call","id":9,"fn":"Forward","arg":"kronk:11445"}
+{"at":64746,"ev":"pod","in":9,"api":"v1","owner":"Service/default/kronk","pod":"kronk-78998884f7-dwnqt","ready":true}
+{"at":64746,"ev":"forward","in":9,"svc":"default/kronk","port":11445,"pod":"kronk-78998884f7-dwnqt","local":"127.0.0.1:51577"}
+{"at":64746,"ev":"return","id":9}
+{"at":64754,"ev":"call","id":10,"fn":"Gateway","arg":"edge"}
+{"at":64758,"ev":"wait","in":10,"on":"gateway","subject":"default/edge","state":"service default/edge ports [80]","done":true}
+{"at":64774,"ev":"pod","in":10,"api":"v1","owner":"Service/default/edge","pod":"edge-5b9c9479bd-hqr77","ready":true}
+{"at":64774,"ev":"forward","in":10,"svc":"default/edge","port":80,"pod":"edge-5b9c9479bd-hqr77","local":"127.0.0.1:51580"}
+{"at":64774,"ev":"return","id":10}
+{"at":64774,"ev":"call","id":11,"fn":"AwaitRoute","arg":"llm"}
+{"at":64775,"ev":"wait","in":11,"on":"route","subject":"default/llm","state":"Accepted=True ResolvedRefs=True","done":true}
+{"at":64775,"ev":"return","id":11}
+{"at":64775,"ev":"call","id":12,"fn":"AwaitResponse","arg":"POST http://llm.example/m/qwen/v1/chat/completions"}
+{"at":64776,"ev":"request","id":13,"in":12,"via":"await","method":"POST","url":"http://llm.example/m/qwen/v1/chat/completions"}
+{"at":65183,"ev":"response","id":13,"status":200,"ms":407}
+{"at":65183,"ev":"body","id":13,"head":"{\"model\":\"unsloth/Qwen3-0.6B-Q8_0\",\"usage\":{\"prompt_tokens\":18,\"completion_tokens\":3,\"total_tokens\":21,\"completion_tokens_details\":{\"reasoning_tokens\":0},\"prompt_tokens_details\":{\"cached_tokens\":0},\"t"}
+{"at":65185,"ev":"wait","in":12,"on":"response","subject":"POST http://llm.example/m/qwen/v1/chat/completions","state":"200 OK","done":true}
+{"at":65185,"ev":"return","id":12}
+{"at":65185,"ev":"call","id":14,"fn":"AwaitResponse","arg":"POST http://llm.example/m/smol/v1/chat/completions"}
+{"at":65185,"ev":"request","id":15,"in":14,"via":"await","method":"POST","url":"http://llm.example/m/smol/v1/chat/completions"}
+{"at":65738,"ev":"response","id":15,"status":200,"ms":553}
+{"at":65738,"ev":"body","id":15,"head":"{\"model\":\"bartowski/SmolLM2-135M-Instruct-Q8_0\",\"usage\":{\"prompt_tokens\":36,\"completion_tokens\":8,\"total_tokens\":44,\"completion_tokens_details\":{\"reasoning_tokens\":0},\"prompt_tokens_details\":{\"cached_"}
+{"at":65740,"ev":"wait","in":14,"on":"response","subject":"POST http://llm.example/m/smol/v1/chat/completions","state":"200 OK","done":true}
+{"at":65740,"ev":"return","id":14}
+{"at":65740,"ev":"call","id":16,"fn":"AwaitResponse","arg":"POST http://llm.example/m/gemma/v1/chat/completions"}
+{"at":65740,"ev":"request","id":17,"in":16,"via":"await","method":"POST","url":"http://llm.example/m/gemma/v1/chat/completions"}
+{"at":66001,"ev":"response","id":17,"status":200,"ms":261}
+{"at":66001,"ev":"body","id":17,"head":"{\"model\":\"ggml-org/gemma-3-270m-it-Q8_0\",\"usage\":{\"prompt_tokens\":15,\"completion_tokens\":3,\"total_tokens\":18,\"completion_tokens_details\":{\"reasoning_tokens\":0},\"prompt_tokens_details\":{\"cached_tokens\""}
+{"at":66003,"ev":"wait","in":16,"on":"response","subject":"POST http://llm.example/m/gemma/v1/chat/completions","state":"200 OK","done":true}
+{"at":66003,"ev":"return","id":16}
+{"at":66003,"ev":"call","id":18,"fn":"AwaitResponse","arg":"POST http://llm.example/m/unknown/v1/chat/completions"}
+{"at":66003,"ev":"request","id":19,"in":18,"via":"await","method":"POST","url":"http://llm.example/m/unknown/v1/chat/completions"}
+{"at":66007,"ev":"response","id":19,"status":404,"ms":3}
+{"at":66007,"ev":"body","id":19,"head":"route not found"}
+{"at":66009,"ev":"wait","in":18,"on":"response","subject":"POST http://llm.example/m/unknown/v1/chat/completions","state":"404 Not Found","done":true}
+{"at":66009,"ev":"return","id":18}
+{"at":66009,"ev":"call","id":20,"fn":"Apply","arg":"testdata/k01-route/crossed"}
+{"at":66017,"ev":"object","in":20,"api":"gateway.networking.k8s.io/v1","obj":"HTTPRoute/default/llm","state":"applied"}
+{"at":66017,"ev":"return","id":20}
+{"at":66017,"ev":"call","id":21,"fn":"AwaitRoute","arg":"llm"}
+{"at":66020,"ev":"wait","in":21,"on":"route","subject":"default/llm","state":"status observed generation 1, route generation 2"}
+{"at":66528,"ev":"wait","in":21,"on":"route","subject":"default/llm","state":"Accepted=True ResolvedRefs=True","done":true}
+{"at":66528,"ev":"return","id":21}
+{"at":66528,"ev":"call","id":22,"fn":"AwaitResponse","arg":"POST http://llm.example/m/smol/v1/chat/completions"}
+{"at":66528,"ev":"request","id":23,"in":22,"via":"await","method":"POST","url":"http://llm.example/m/smol/v1/chat/completions"}
+{"at":66907,"ev":"response","id":23,"status":200,"ms":379}
+{"at":66907,"ev":"body","id":23,"head":"{\"model\":\"unsloth/Qwen3-0.6B-Q8_0\",\"usage\":{\"prompt_tokens\":18,\"completion_tokens\":3,\"total_tokens\":21,\"completion_tokens_details\":{\"reasoning_tokens\":0},\"prompt_tokens_details\":{\"cached_tokens\":0},\"t"}
+{"at":66909,"ev":"wait","in":22,"on":"response","subject":"POST http://llm.example/m/smol/v1/chat/completions","state":"200 OK","done":true}
+{"at":66909,"ev":"return","id":22}
+{"at":66909,"ev":"call","id":24,"fn":"Apply","arg":"testdata/k01-route/good"}
+{"at":66915,"ev":"object","in":24,"api":"gateway.networking.k8s.io/v1","obj":"HTTPRoute/default/llm","state":"applied"}
+{"at":66915,"ev":"return","id":24}
+{"at":66915,"ev":"call","id":25,"fn":"AwaitRoute","arg":"llm"}
+{"at":66916,"ev":"wait","in":25,"on":"route","subject":"default/llm","state":"status observed generation 2, route generation 3"}
+{"at":67421,"ev":"wait","in":25,"on":"route","subject":"default/llm","state":"Accepted=True ResolvedRefs=True","done":true}
+{"at":67421,"ev":"return","id":25}
+{"at":67421,"ev":"call","id":26,"fn":"AwaitResponse","arg":"POST http://llm.example/m/smol/v1/chat/completions"}
+{"at":67421,"ev":"request","id":27,"in":26,"via":"await","method":"POST","url":"http://llm.example/m/smol/v1/chat/completions"}
+{"at":67978,"ev":"response","id":27,"status":200,"ms":557}
+{"at":67978,"ev":"body","id":27,"head":"{\"model\":\"bartowski/SmolLM2-135M-Instruct-Q8_0\",\"usage\":{\"prompt_tokens\":36,\"completion_tokens\":8,\"total_tokens\":44,\"completion_tokens_details\":{\"reasoning_tokens\":0},\"prompt_tokens_details\":{\"cached_"}
+{"at":67979,"ev":"wait","in":26,"on":"response","subject":"POST http://llm.example/m/smol/v1/chat/completions","state":"200 OK","done":true}
+{"at":67980,"ev":"return","id":26}
+{"at":67980,"ev":"call","id":28,"fn":"Cleanup","arg":"ok"}
+{"at":68890,"ev":"report","in":28,"line":"kubeharness cluster=kh-a062955cacf2-1 phase=ready cause=ok cleanup=succeeded remaining=0 create=8.9s ready=17.3s delete=910ms profile=gateway-agentgateway install=6.3s"}
+{"at":68890,"ev":"return","id":28}

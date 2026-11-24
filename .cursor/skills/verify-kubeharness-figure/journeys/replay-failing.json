@@ -87,7 +87,7 @@
  ],
  [
   "until",
-  "!/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/i.test(document.querySelector('.kh-names').textContent)",
+  "((text) => text.replace(/\\bPOST (?=\\/|https?:\\/\\/)/g, \"\").match(/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/gi) ?? [])(document.querySelector('.kh-names').textContent).length === 0",
   1000
  ],
  [
@@ -109,7 +109,12 @@
  ],
  [
   "eval",
-  "window.khPlateH = Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+  "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "until",
@@ -171,13 +176,13 @@
   "replay-envoy-G02-off.png"
  ],
  [
-  "until",
-  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === window.khPlateH",
-  1000
- ],
- [
   "eval",
   "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "eval",

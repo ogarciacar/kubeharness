@@ -20,7 +20,7 @@ export const PROFILES = {
     label: "agentgateway",
     name: "gateway-agentgateway",
     pins: "Gateway API v1.6.1 · agentgateway v1.4.1",
-    scenarios: ["G01", "G02", "G03", "A01"],
+    scenarios: ["G01", "G02", "G03", "A01", "K01"],
   },
 };
 
@@ -30,7 +30,8 @@ export const CLUSTER = "kind v0.33.0 · k8s v1.37.0";
 
 // Recorded report-line values. README.md's sample report line is one
 // gateway-api run; the agentgateway install= times are CONCEPT.md "S3 slice 6"
-// (G01–G03) and "S4 A01 result" (about 6.2s). Fields the repo does not record
+// (G01–G03) and "S4 A01 result" (about 6.2s); K01's is its committed trace
+// (traces/K01-gateway-agentgateway.jsonl). Fields the repo does not record
 // for a run are left out rather than guessed.
 export const REPORTS = {
   "gateway-api": {
@@ -43,6 +44,7 @@ export const REPORTS = {
     G02: { install: "6.7s" },
     G03: { install: "7.0s" },
     A01: { install: "6.2s" },
+    K01: { install: "6.3s" },
   },
 };
 
@@ -55,6 +57,7 @@ export const BACKENDS = {
   G02: { a: "shop/orders", b: "payments/payments" },
   G03: { a: "shop/blue", b: "shop/green" },
   A01: { a: "calculator", b: null },
+  K01: { a: "kronk", b: null },
 };
 
 // One test body per scenario, as steps. Each step is shown for `hold`
@@ -117,6 +120,21 @@ export const SCENARIOS = {
       { say: "tools/call sum(40,2) = 42", send: "a", lever: "a", mcp: true, display: "42", hold: 2.4 },
     ],
   },
+  // examples/inference/k01_test.go TestK01Routing; testdata/k01 and
+  // k01-route/{good,crossed}.
+  K01: {
+    title: "K01 · three models behind one kronk",
+    gate: true,
+    steps: [
+      { say: "AwaitRoute llm RouteReady · three AgentgatewayBackends to Service default/kronk", lever: "a", model: -1, display: "", hold: 1.8 },
+      { say: "POST http://llm.example/m/qwen/ → unsloth/Qwen3-0.6B-Q8_0", send: "a", lever: "a", model: 0, display: "QWEN3", hold: 1.6 },
+      { say: "POST http://llm.example/m/smol/ → bartowski/SmolLM2-135M-Instruct-Q8_0", send: "a", lever: "a", model: 1, display: "SMOL2", hold: 1.6 },
+      { say: "POST http://llm.example/m/gemma/ → ggml-org/gemma-3-270m-it-Q8_0", send: "a", lever: "a", model: 2, display: "GEMMA", hold: 1.6 },
+      { say: "POST http://llm.example/m/unknown/ → 404 route not found", send: "none", lever: "none", model: -1, display: "", hold: 1.4 },
+      { say: "h.Apply(testdata/k01-route/crossed) · /m/smol/ → unsloth/Qwen3-0.6B-Q8_0, rejected", send: "a", lever: "a", model: 0, display: "QWEN3", hold: 2.0 },
+      { say: "h.Apply(testdata/k01-route/good) · /m/smol/ → bartowski/SmolLM2-135M-Instruct-Q8_0", send: "a", lever: "a", model: 1, display: "SMOL2", hold: 1.6 },
+    ],
+  },
 };
 
 // The lifecycle around every test body, in figure seconds.
@@ -157,6 +175,8 @@ export const LIFECYCLE = [
 //   Service and Pod (gateway.go GatewayController.Gateway);
 // - install: the part that counts the objects the profile install applies
 //   (CRDs, RBAC, the controller), instead of listing them;
+// - models: null, or each model id a response body's "model" names, in
+//   lamp order, with its display tag and the AgentgatewayBackend that pins it;
 // - body: the test body's time map (replay.mjs timeMap): how many times
 //   slower it plays, its minimum hold per step, and at most how many pulses
 //   it draws per second (none means every one).
@@ -178,6 +198,7 @@ export const REPLAY = {
     gate: null,
     weights: null,
     mcp: null,
+    models: null,
     // testdata/g01/gateway.yaml (the Gateway, both HTTPRoutes on the
     // diverter), orders.yaml and payments.yaml (the Services).
     parts: {
@@ -203,6 +224,7 @@ export const REPLAY = {
     gate: { route: "shop/pay", path: "/payments" },
     weights: null,
     mcp: null,
+    models: null,
     // testdata/g02/00-namespaces.yaml, 10-gateway.yaml, 20-orders.yaml,
     // 21-payments.yaml and testdata/g02-grant/grant.yaml.
     parts: {
@@ -238,6 +260,7 @@ export const REPLAY = {
       },
     },
     mcp: null,
+    models: null,
     // testdata/g03/00-namespace.yaml, 10-gateway.yaml, 20-blue.yaml,
     // 21-green.yaml and testdata/g03-route/*/route.yaml.
     parts: {
@@ -282,6 +305,7 @@ export const REPLAY = {
       ],
       display: "tools/call",
     },
+    models: null,
     // testdata/a01/gateway.yaml, calculator.yaml and
     // testdata/a01-backend/good/backend.yaml.
     parts: {
@@ -293,5 +317,37 @@ export const REPLAY = {
     kinds: { cart: "Gateway", div: "HTTPRoute", a: "AgentgatewayBackend" },
     ...CART,
     body: { rate: 20, minHold: 1.2 },
+  },
+  K01: {
+    test: "TestK01Routing",
+    ctors: CTORS,
+    // examples/inference/testdata/k01/kronk.yaml: one kronk Deployment and
+    // Service in default.
+    posts: {},
+    owners: { "default/kronk": "a" },
+    // testdata/k01-route/good.
+    paths: { "/m/qwen/": "a", "/m/smol/": "a", "/m/gemma/": "a" },
+    gate: null,
+    weights: null,
+    mcp: null,
+    // testdata/k01/backends.yaml: each AgentgatewayBackend pins one model.
+    models: {
+      "unsloth/Qwen3-0.6B-Q8_0": { tag: "QWEN3", backend: "qwen" },
+      "bartowski/SmolLM2-135M-Instruct-Q8_0": { tag: "SMOL2", backend: "smol" },
+      "ggml-org/gemma-3-270m-it-Q8_0": { tag: "GEMMA", backend: "gemma" },
+    },
+    // testdata/k01/gateway.yaml, backends.yaml, kronk.yaml and
+    // testdata/k01-route/good.
+    parts: {
+      "Gateway/default/edge": "cart",
+      "HTTPRoute/default/llm": "div",
+      "AgentgatewayBackend/default/qwen": "a",
+      "AgentgatewayBackend/default/smol": "a",
+      "AgentgatewayBackend/default/gemma": "a",
+      "Service/default/kronk": "a",
+    },
+    kinds: { cart: "Gateway", div: "HTTPRoute", a: "Service" },
+    ...CART,
+    body: { rate: 8, minHold: 1.2 },
   },
 };

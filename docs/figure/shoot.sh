@@ -14,6 +14,7 @@ specs=(
   "gateway-agentgateway G02 10"
   "gateway-agentgateway G03 7"
   "gateway-agentgateway A01 9"
+  "gateway-agentgateway K01 7"
 )
 for theme in "" "-light"; do
   for spec in "${specs[@]}"; do

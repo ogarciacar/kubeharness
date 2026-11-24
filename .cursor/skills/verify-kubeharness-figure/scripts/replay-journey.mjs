@@ -12,8 +12,17 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../../../../", import.meta.url));
 const { checksOf, describe, groupsOf, objectsOf, parseTrace, stepsFromTrace, stoppedAt, verdictOf } = await import(`${root}docs/figure/replay.mjs`);
 const { CLUSTER, LAMPS, PROFILES, REPLAY } = await import(`${root}docs/figure/model.mjs`);
+const { benchWordsIn } = await import(`${root}docs/figure/tools/bench-words.mjs`);
+const { answersOf } = await import(`${root}docs/figure/tools/k01-route.mjs`);
 const dir = resolve(process.argv[2] ?? `${root}docs/figure/traces`);
 const out = process.argv[3] ?? `${root}.cursor/skills/verify-kubeharness-figure/journeys/replay.json`;
+
+const CARD_HEIGHT_PX = 625;
+
+const crossedAnswer = (ev, models) => {
+  const a = answersOf(ev).find((a) => a.want !== a.alias);
+  return { alias: a.alias, id: Object.keys(models).find((id) => models[id].backend === a.want) };
+};
 
 const runs = {};
 for (const name of readdirSync(dir).filter((f) => f.endsWith(".jsonl")).sort()) {
@@ -37,6 +46,7 @@ for (const name of readdirSync(dir).filter((f) => f.endsWith(".jsonl")).sort()) 
     }),
     verdict: verdictOf(ev.find((e) => e.ev === "report").line),
     stopped: stoppedAt(ev.find((e) => e.ev === "report").line),
+    crossed: facts.models && crossedAnswer(ev, facts.models),
   };
 }
 
@@ -55,7 +65,7 @@ const pinsOn = ["eval", "[...document.querySelectorAll('[data-pin]')].filter((p)
 const rowsShown = ["eval", "[...document.querySelectorAll('.kh-groups[data-on] [data-obj]')].filter((r) => r.dataset.state !== 'absent').map((r) => r.dataset.state + (r.hasAttribute('data-touched') ? '*' : '') + ' ' + r.textContent).join(' | ')"];
 const heads = "[...document.querySelectorAll('.kh-groups[data-on] .kh-group-head')].map((h) => [...h.querySelectorAll('.kh-kind, .kh-name')].filter((e) => getComputedStyle(e).visibility !== 'hidden').map((e) => e.textContent).join(' ')).join(' | ')";
 const headsAre = (list) => ["until", `${heads} === '${list.join(" | ")}'`, BODY_WAIT];
-const noPartWords = ["until", "!/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/i.test(document.querySelector('.kh-names').textContent)", 1000];
+const noPartWords = ["until", `(${benchWordsIn})(document.querySelector('.kh-names').textContent).length === 0`, 1000];
 const checkRows = "[...document.querySelectorAll('.kh-checks[data-on] [data-check]')]";
 const checkLabels = `${checkRows}.map((r) => r.textContent).join(' | ')`;
 const boxes = `${checkRows}.map((r) => r.dataset.s).join(',')`;
@@ -70,8 +80,13 @@ const lampRow = "[...document.querySelectorAll('[data-lamp]')].map((l) => (l.has
 const COLOUR = { pass: "green", fail: "red", wait: "none" };
 const corner = (name) => `document.querySelector('[data-corner="${name}"]').innerText`;
 const plateH = "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)";
+const cardHeight = [["eval", `'card height ' + ${plateH}`], ["until", `${plateH} === ${CARD_HEIGHT_PX}`, 1000]];
 const apiShown = (o) => ["until", `${row(o.id)}.querySelector('.kh-api')?.textContent === '${o.api}' && getComputedStyle(${row(o.id)}.querySelector('.kh-api')).visibility === 'visible'`, BODY_WAIT];
 const apisShown = ["eval", "[...document.querySelectorAll('.kh-groups[data-on] [data-obj]')].filter((r) => r.querySelector('.kh-api') && getComputedStyle(r.querySelector('.kh-api')).visibility === 'visible').map((r) => r.dataset.obj + ' ' + r.querySelector('.kh-api').textContent).join(' | ')"];
+const sayHas = (text) => `document.querySelector('[data-say]').textContent.includes('${text}')`;
+const display = "document.querySelector('[data-part=\"display\"]').textContent";
+const modelLamps = "[...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('')";
+const lampsShown = ["eval", `'model lamps ' + ${modelLamps} + ' · display ' + ${display}`];
 const headOf = (f, kind) => f.groups.find((g) => g.kind === kind).head;
 const kindsOf = (f) => f.groups.map((g) => g.kind);
 const namesOf = (f) => f.groups.map((g) => `${g.kind} ${g.head.name}`);
@@ -102,7 +117,7 @@ function open(p, sc, f) {
     ["eval", `kubeharnessFigure.steps().filter((s) => s.say.includes('Pod ${f.pod}')).map((s) => s.index + ': ' + s.say).join(' | ')`],
     ["until", "document.querySelector('.kh-stage').dataset.phase === 'test'", 60000],
     ["shot", `replay-${SHORT[p]}-${sc}-install.png`],
-    ["eval", `window.khPlateH = ${plateH}`],
+    ...cardHeight,
     ["until", Object.values(f.pods).map((id) => `${row(id)}.dataset.state === 'present' && ${row(id)}.textContent.includes('${id.slice(4)}')`).join(" && "), BODY_WAIT],
     ["eval", Object.values(f.pods).map((id) => `${row(id)}.textContent`).join(" + ' | ' + ")],
     apiShown(headOf(f, "HTTPRoute")),
@@ -119,8 +134,7 @@ const close = (p, sc, f) => [
   ["until", `${lampRow} === '${LAMPS.map((_, n) => (n === f.stopped ? "fail" : "done")).join(",")}'`, 1000],
   ["eval", lampRow],
   ["shot", `replay-${SHORT[p]}-${sc}-off.png`],
-  ["until", `${plateH} === window.khPlateH`, 1000],
-  ["eval", `'card height ' + ${plateH}`],
+  ...cardHeight,
   ["eval", "document.querySelector('[data-report]').textContent"],
 ];
 
@@ -189,6 +203,38 @@ const BODY = {
     ["shot", `replay-${SHORT[p]}-A01-42.png`],
     say,
   ],
+  // k01_test.go TestK01Routing.
+  K01: (p, f) => {
+    const ids = Object.keys(REPLAY.K01.models);
+    const answered = (alias, id) => `${sayHas(`POST http://llm.example/m/${alias}/`)} && ${sayHas(`from ${id}`)} && ${display} === '${REPLAY.K01.models[id].tag}' && ${modelLamps} === '${ids.map((k) => (k === id ? 1 : 0)).join("")}'`;
+    const dark = `${display} === '' && ${modelLamps} === '${ids.map(() => 0).join("")}'`;
+    const own = ids.find((id) => REPLAY.K01.models[id].backend === f.crossed.alias);
+    return [
+      headsAre(namesOf(f)),
+      ["until", "document.querySelector('.kh-bench').hasAttribute('data-models')", 1000],
+      ...ids.flatMap((id) => [
+        ["until", answered(REPLAY.K01.models[id].backend, id), BODY_WAIT],
+        ["shot", `replay-${SHORT[p]}-K01-${REPLAY.K01.models[id].backend}.png`],
+        say, lampsShown, pinsOn,
+      ]),
+      ["until", `${sayHas("POST http://llm.example/m/unknown/")} && document.querySelector('[data-kh="div"]').hasAttribute('data-block') && ${modelLamps} === '${ids.map(() => 0).join("")}'`, BODY_WAIT],
+      ["shot", `replay-${SHORT[p]}-K01-unknown.png`],
+      say, lampsShown,
+      ["until", answered(f.crossed.alias, f.crossed.id), BODY_WAIT],
+      ["shot", `replay-${SHORT[p]}-K01-crossed.png`],
+      say, lampsShown, rowsShown,
+      ["until", `${sayHas("h.Apply(testdata/k01-route/good)")} && ${dark}`, BODY_WAIT],
+      ["shot", `replay-${SHORT[p]}-K01-reapply.png`],
+      say, lampsShown,
+      ["until", `${sayHas("gw.AwaitRoute(llm)")} && ${dark}`, BODY_WAIT],
+      say, lampsShown,
+      ["until", answered(f.crossed.alias, own), BODY_WAIT],
+      ["shot", `replay-${SHORT[p]}-K01-restored.png`],
+      say, lampsShown,
+      ["until", `['cleanup', 'off'].includes(document.querySelector('.kh-stage').dataset.phase) && ${dark}`, BODY_WAIT],
+      say, lampsShown,
+    ];
+  },
 };
 
 const a = [];

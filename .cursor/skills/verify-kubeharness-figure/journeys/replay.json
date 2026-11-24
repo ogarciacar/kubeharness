@@ -87,7 +87,7 @@
  ],
  [
   "until",
-  "!/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/i.test(document.querySelector('.kh-names').textContent)",
+  "((text) => text.replace(/\\bPOST (?=\\/|https?:\\/\\/)/g, \"\").match(/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/gi) ?? [])(document.querySelector('.kh-names').textContent).length === 0",
   1000
  ],
  [
@@ -109,7 +109,12 @@
  ],
  [
   "eval",
-  "window.khPlateH = Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+  "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "until",
@@ -223,13 +228,13 @@
   "replay-envoy-G01-off.png"
  ],
  [
-  "until",
-  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === window.khPlateH",
-  1000
- ],
- [
   "eval",
   "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "eval",
@@ -323,7 +328,7 @@
  ],
  [
   "until",
-  "!/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/i.test(document.querySelector('.kh-names').textContent)",
+  "((text) => text.replace(/\\bPOST (?=\\/|https?:\\/\\/)/g, \"\").match(/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/gi) ?? [])(document.querySelector('.kh-names').textContent).length === 0",
   1000
  ],
  [
@@ -345,7 +350,12 @@
  ],
  [
   "eval",
-  "window.khPlateH = Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+  "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "until",
@@ -537,13 +547,13 @@
   "replay-envoy-G02-off.png"
  ],
  [
-  "until",
-  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === window.khPlateH",
-  1000
- ],
- [
   "eval",
   "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "eval",
@@ -637,7 +647,7 @@
  ],
  [
   "until",
-  "!/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/i.test(document.querySelector('.kh-names').textContent)",
+  "((text) => text.replace(/\\bPOST (?=\\/|https?:\\/\\/)/g, \"\").match(/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/gi) ?? [])(document.querySelector('.kh-names').textContent).length === 0",
   1000
  ],
  [
@@ -659,7 +669,12 @@
  ],
  [
   "eval",
-  "window.khPlateH = Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+  "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "until",
@@ -777,13 +792,13 @@
   "replay-envoy-G03-off.png"
  ],
  [
-  "until",
-  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === window.khPlateH",
-  1000
- ],
- [
   "eval",
   "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "eval",
@@ -877,7 +892,7 @@
  ],
  [
   "until",
-  "!/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/i.test(document.querySelector('.kh-names').textContent)",
+  "((text) => text.replace(/\\bPOST (?=\\/|https?:\\/\\/)/g, \"\").match(/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/gi) ?? [])(document.querySelector('.kh-names').textContent).length === 0",
   1000
  ],
  [
@@ -899,7 +914,12 @@
  ],
  [
   "eval",
-  "window.khPlateH = Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+  "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "until",
@@ -1013,13 +1033,13 @@
   "replay-agw-G01-off.png"
  ],
  [
-  "until",
-  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === window.khPlateH",
-  1000
- ],
- [
   "eval",
   "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "eval",
@@ -1113,7 +1133,7 @@
  ],
  [
   "until",
-  "!/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/i.test(document.querySelector('.kh-names').textContent)",
+  "((text) => text.replace(/\\bPOST (?=\\/|https?:\\/\\/)/g, \"\").match(/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/gi) ?? [])(document.querySelector('.kh-names').textContent).length === 0",
   1000
  ],
  [
@@ -1135,7 +1155,12 @@
  ],
  [
   "eval",
-  "window.khPlateH = Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+  "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "until",
@@ -1327,13 +1352,13 @@
   "replay-agw-G02-off.png"
  ],
  [
-  "until",
-  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === window.khPlateH",
-  1000
- ],
- [
   "eval",
   "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "eval",
@@ -1427,7 +1452,7 @@
  ],
  [
   "until",
-  "!/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/i.test(document.querySelector('.kh-names').textContent)",
+  "((text) => text.replace(/\\bPOST (?=\\/|https?:\\/\\/)/g, \"\").match(/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/gi) ?? [])(document.querySelector('.kh-names').textContent).length === 0",
   1000
  ],
  [
@@ -1449,7 +1474,12 @@
  ],
  [
   "eval",
-  "window.khPlateH = Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+  "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "until",
@@ -1567,13 +1597,13 @@
   "replay-agw-G03-off.png"
  ],
  [
-  "until",
-  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === window.khPlateH",
-  1000
- ],
- [
   "eval",
   "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "eval",
@@ -1667,7 +1697,7 @@
  ],
  [
   "until",
-  "!/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/i.test(document.querySelector('.kh-names').textContent)",
+  "((text) => text.replace(/\\bPOST (?=\\/|https?:\\/\\/)/g, \"\").match(/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/gi) ?? [])(document.querySelector('.kh-names').textContent).length === 0",
   1000
  ],
  [
@@ -1689,7 +1719,12 @@
  ],
  [
   "eval",
-  "window.khPlateH = Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+  "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "until",
@@ -1790,13 +1825,373 @@
   "replay-agw-A01-off.png"
  ],
  [
+  "eval",
+  "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
   "until",
-  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === window.khPlateH",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
   1000
  ],
  [
   "eval",
+  "document.querySelector('[data-report]').textContent"
+ ],
+ [
+  "click",
+  "button[data-profile=\"gateway-agentgateway\"]"
+ ],
+ [
+  "click",
+  "button[data-scenario=\"K01\"]"
+ ],
+ [
+  "until",
+  "document.querySelector('.kh-stage').dataset.scenario === 'K01' && document.querySelector('.kh-stage').dataset.profile === 'gateway-agentgateway'",
+  2000
+ ],
+ [
+  "until",
+  "document.querySelector('[data-corner=\"hint\"]').innerText === 'TestK01Routing' && document.querySelector('[data-corner=\"fig\"]').innerText === 'Replay'",
+  2000
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-corner=\"fig\"]').innerText + ' · ' + document.querySelector('[data-corner=\"hint\"]').innerText"
+ ],
+ [
+  "until",
+  "document.querySelector('.kh-names-k').innerText === 'K8S OBJECTS'",
+  1000
+ ],
+ [
+  "until",
+  "document.querySelector('[data-corner=\"hint\"]').getBoundingClientRect().right < document.querySelector('[data-corner=\"readout\"]').getBoundingClientRect().left",
+  1000
+ ],
+ [
+  "eval",
+  "JSON.stringify(kubeharnessFigure.state())"
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('.kh-controls button')].map((b) => (b.dataset.scenario ?? b.dataset.profile ?? 'tour') + (b.disabled ? ':disabled' : ':on')).join(' ')"
+ ],
+ [
+  "until",
+  "document.querySelector('[data-part=\"plate\"]').textContent === 'kh-a062955cacf2-1'",
+  5000
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-part=\"plate\"]').textContent"
+ ],
+ [
+  "until",
+  "document.querySelector('[data-corner=\"readout\"]').innerText === 'PINNED\\nGateway API v1.6.1 · agentgateway v1.4.1\\nCLUSTER\\nkind v0.33.0 · k8s v1.37.0'",
+  1000
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-corner=\"readout\"]').innerText"
+ ],
+ [
+  "until",
+  "[...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => r.textContent).join(' | ') === \"AwaitRoute llm | AwaitResponse POST /m/qwen/v1/chat/completions | AwaitResponse POST /m/smol/v1/chat/completions | AwaitResponse POST /m/gemma/v1/chat/completions | AwaitResponse POST /m/unknown/v1/chat/completions | AwaitRoute llm | AwaitResponse POST /m/smol/v1/chat/completions | AwaitRoute llm | AwaitResponse POST /m/smol/v1/chat/completions\"",
+  1000
+ ],
+ [
+  "until",
+  "[...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => r.dataset.s).join(',') === 'wait,wait,wait,wait,wait,wait,wait,wait,wait' && document.querySelector('[data-verdict]').textContent === 'RUNNING'",
+  2000
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => r.textContent).join(' | ') + ' · ' + [...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => r.dataset.s).join(',') + ' · ' + document.querySelector('[data-verdict]').textContent"
+ ],
+ [
+  "until",
+  "/^\\d\\d:\\d\\d\\.\\d{3}$/.test(document.querySelector('[data-elapsed]').textContent) && ((t) => +t.slice(0, 2) * 60 + +t.slice(3))(document.querySelector('[data-elapsed]').textContent) < 2",
+  1000
+ ],
+ [
+  "until",
+  "[...document.querySelectorAll('.kh-groups[data-on] .kh-group-head')].map((h) => [...h.querySelectorAll('.kh-kind, .kh-name')].filter((e) => getComputedStyle(e).visibility !== 'hidden').map((e) => e.textContent).join(' ')).join(' | ') === 'Gateway | HTTPRoute | Service'",
+  60000
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('.kh-groups[data-on] .kh-group-head')].map((h) => [...h.querySelectorAll('.kh-kind, .kh-name')].filter((e) => getComputedStyle(e).visibility !== 'hidden').map((e) => e.textContent).join(' ')).join(' | ')"
+ ],
+ [
+  "until",
+  "((text) => text.replace(/\\bPOST (?=\\/|https?:\\/\\/)/g, \"\").match(/cartridge|diverter|gate valve|\\bposts?\\b|\\btray\\b/gi) ?? [])(document.querySelector('.kh-names').textContent).length === 0",
+  1000
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('[data-pin]')].filter((p) => !p.hasAttribute('data-off')).map((p) => p.dataset.pin + '=' + p.textContent + (p.hasAttribute('data-on') ? '*' : '')).join(',') + ' · lit parts ' + [...document.querySelectorAll('[data-named][data-touched]')].map((p) => p.dataset.named).join(',')"
+ ],
+ [
+  "eval",
+  "kubeharnessFigure.steps().filter((s) => s.say.includes('Pod agentgateway-system/agentgateway-5c7fb5cf75-gptg9')).map((s) => s.index + ': ' + s.say).join(' | ')"
+ ],
+ [
+  "until",
+  "document.querySelector('.kh-stage').dataset.phase === 'test'",
+  60000
+ ],
+ [
+  "shot",
+  "replay-agw-K01-install.png"
+ ],
+ [
+  "eval",
   "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
+ ],
+ [
+  "until",
+  "document.querySelector('.kh-groups[data-on] [data-obj=\"Pod/default/kronk-78998884f7-dwnqt\"]').dataset.state === 'present' && document.querySelector('.kh-groups[data-on] [data-obj=\"Pod/default/kronk-78998884f7-dwnqt\"]').textContent.includes('default/kronk-78998884f7-dwnqt')",
+  60000
+ ],
+ [
+  "eval",
+  "document.querySelector('.kh-groups[data-on] [data-obj=\"Pod/default/kronk-78998884f7-dwnqt\"]').textContent"
+ ],
+ [
+  "until",
+  "document.querySelector('.kh-groups[data-on] [data-obj=\"HTTPRoute/default/llm\"]').querySelector('.kh-api')?.textContent === 'gateway.networking.k8s.io/v1' && getComputedStyle(document.querySelector('.kh-groups[data-on] [data-obj=\"HTTPRoute/default/llm\"]').querySelector('.kh-api')).visibility === 'visible'",
+  60000
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('.kh-groups[data-on] [data-obj]')].filter((r) => r.querySelector('.kh-api') && getComputedStyle(r.querySelector('.kh-api')).visibility === 'visible').map((r) => r.dataset.obj + ' ' + r.querySelector('.kh-api').textContent).join(' | ')"
+ ],
+ [
+  "until",
+  "[...document.querySelectorAll('.kh-groups[data-on] .kh-group-head')].map((h) => [...h.querySelectorAll('.kh-kind, .kh-name')].filter((e) => getComputedStyle(e).visibility !== 'hidden').map((e) => e.textContent).join(' ')).join(' | ') === 'Gateway default/edge | HTTPRoute default/llm | Service default/kronk'",
+  60000
+ ],
+ [
+  "until",
+  "document.querySelector('.kh-bench').hasAttribute('data-models')",
+  1000
+ ],
+ [
+  "until",
+  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/qwen/') && document.querySelector('[data-say]').textContent.includes('from unsloth/Qwen3-0.6B-Q8_0') && document.querySelector('[data-part=\"display\"]').textContent === 'QWEN3' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '100'",
+  60000
+ ],
+ [
+  "shot",
+  "replay-agw-K01-qwen.png"
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-say]').textContent"
+ ],
+ [
+  "eval",
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('[data-pin]')].filter((p) => !p.hasAttribute('data-off')).map((p) => p.dataset.pin + '=' + p.textContent + (p.hasAttribute('data-on') ? '*' : '')).join(',') + ' · lit parts ' + [...document.querySelectorAll('[data-named][data-touched]')].map((p) => p.dataset.named).join(',')"
+ ],
+ [
+  "until",
+  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/smol/') && document.querySelector('[data-say]').textContent.includes('from bartowski/SmolLM2-135M-Instruct-Q8_0') && document.querySelector('[data-part=\"display\"]').textContent === 'SMOL2' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '010'",
+  60000
+ ],
+ [
+  "shot",
+  "replay-agw-K01-smol.png"
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-say]').textContent"
+ ],
+ [
+  "eval",
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('[data-pin]')].filter((p) => !p.hasAttribute('data-off')).map((p) => p.dataset.pin + '=' + p.textContent + (p.hasAttribute('data-on') ? '*' : '')).join(',') + ' · lit parts ' + [...document.querySelectorAll('[data-named][data-touched]')].map((p) => p.dataset.named).join(',')"
+ ],
+ [
+  "until",
+  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/gemma/') && document.querySelector('[data-say]').textContent.includes('from ggml-org/gemma-3-270m-it-Q8_0') && document.querySelector('[data-part=\"display\"]').textContent === 'GEMMA' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '001'",
+  60000
+ ],
+ [
+  "shot",
+  "replay-agw-K01-gemma.png"
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-say]').textContent"
+ ],
+ [
+  "eval",
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('[data-pin]')].filter((p) => !p.hasAttribute('data-off')).map((p) => p.dataset.pin + '=' + p.textContent + (p.hasAttribute('data-on') ? '*' : '')).join(',') + ' · lit parts ' + [...document.querySelectorAll('[data-named][data-touched]')].map((p) => p.dataset.named).join(',')"
+ ],
+ [
+  "until",
+  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/unknown/') && document.querySelector('[data-kh=\"div\"]').hasAttribute('data-block') && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000'",
+  60000
+ ],
+ [
+  "shot",
+  "replay-agw-K01-unknown.png"
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-say]').textContent"
+ ],
+ [
+  "eval",
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+ ],
+ [
+  "until",
+  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/smol/') && document.querySelector('[data-say]').textContent.includes('from unsloth/Qwen3-0.6B-Q8_0') && document.querySelector('[data-part=\"display\"]').textContent === 'QWEN3' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '100'",
+  60000
+ ],
+ [
+  "shot",
+  "replay-agw-K01-crossed.png"
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-say]').textContent"
+ ],
+ [
+  "eval",
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('.kh-groups[data-on] [data-obj]')].filter((r) => r.dataset.state !== 'absent').map((r) => r.dataset.state + (r.hasAttribute('data-touched') ? '*' : '') + ' ' + r.textContent).join(' | ')"
+ ],
+ [
+  "until",
+  "document.querySelector('[data-say]').textContent.includes('h.Apply(testdata/k01-route/good)') && document.querySelector('[data-part=\"display\"]').textContent === '' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000'",
+  60000
+ ],
+ [
+  "shot",
+  "replay-agw-K01-reapply.png"
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-say]').textContent"
+ ],
+ [
+  "eval",
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+ ],
+ [
+  "until",
+  "document.querySelector('[data-say]').textContent.includes('gw.AwaitRoute(llm)') && document.querySelector('[data-part=\"display\"]').textContent === '' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000'",
+  60000
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-say]').textContent"
+ ],
+ [
+  "eval",
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+ ],
+ [
+  "until",
+  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/smol/') && document.querySelector('[data-say]').textContent.includes('from bartowski/SmolLM2-135M-Instruct-Q8_0') && document.querySelector('[data-part=\"display\"]').textContent === 'SMOL2' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '010'",
+  60000
+ ],
+ [
+  "shot",
+  "replay-agw-K01-restored.png"
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-say]').textContent"
+ ],
+ [
+  "eval",
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+ ],
+ [
+  "until",
+  "['cleanup', 'off'].includes(document.querySelector('.kh-stage').dataset.phase) && document.querySelector('[data-part=\"display\"]').textContent === '' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000'",
+  60000
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-say]').textContent"
+ ],
+ [
+  "eval",
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+ ],
+ [
+  "until",
+  "document.querySelector('.kh-stage').dataset.phase === 'off' && document.querySelector('[data-report]').textContent === 'kubeharness cluster=kh-a062955cacf2-1 phase=ready cause=ok cleanup=succeeded remaining=0 create=8.9s ready=17.3s delete=910ms profile=gateway-agentgateway install=6.3s'",
+  60000
+ ],
+ [
+  "until",
+  "[...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => r.dataset.s).join(',') === 'pass,pass,pass,pass,pass,pass,pass,pass,pass' && [...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => ((el) => { const bg = getComputedStyle(el).backgroundColor; const probe = (v) => { const e = document.createElement('i'); e.style.background = `var(--anatomy-${v})`; el.appendChild(e); const c = getComputedStyle(e).backgroundColor; e.remove(); return c; }; return ['green', 'red'].find((v) => probe(v) === bg) ?? 'none'; })(r.querySelector('.kh-box'))).join(',') === 'green,green,green,green,green,green,green,green,green'",
+  1000
+ ],
+ [
+  "until",
+  "document.querySelector('[data-verdict]').textContent === 'PASS' && ((el) => { const bg = getComputedStyle(el).backgroundColor; const probe = (v) => { const e = document.createElement('i'); e.style.background = `var(--anatomy-${v})`; el.appendChild(e); const c = getComputedStyle(e).backgroundColor; e.remove(); return c; }; return ['green', 'red'].find((v) => probe(v) === bg) ?? 'none'; })(document.querySelector('[data-verdict]')) === 'green'",
+  1000
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => r.dataset.s).join(',') + ' · ' + [...document.querySelectorAll('.kh-checks[data-on] [data-check]')].map((r) => ((el) => { const bg = getComputedStyle(el).backgroundColor; const probe = (v) => { const e = document.createElement('i'); e.style.background = `var(--anatomy-${v})`; el.appendChild(e); const c = getComputedStyle(e).backgroundColor; e.remove(); return c; }; return ['green', 'red'].find((v) => probe(v) === bg) ?? 'none'; })(r.querySelector('.kh-box'))).join(',') + ' · ' + document.querySelector('[data-verdict]').textContent"
+ ],
+ [
+  "until",
+  "((t) => +t.slice(0, 2) * 60 + +t.slice(3))(document.querySelector('[data-elapsed]').textContent) > kubeharnessFigure.runSeconds() - 3 && ((t) => +t.slice(0, 2) * 60 + +t.slice(3))(document.querySelector('[data-elapsed]').textContent) <= kubeharnessFigure.runSeconds()",
+  1000
+ ],
+ [
+  "eval",
+  "document.querySelector('[data-elapsed]').textContent + ' of ' + kubeharnessFigure.runSeconds().toFixed(3) + ' s'"
+ ],
+ [
+  "until",
+  "[...document.querySelectorAll('[data-lamp]')].map((l) => (l.hasAttribute('data-on') ? 'on' : l.hasAttribute('data-fail') ? 'fail' : l.hasAttribute('data-done') ? 'done' : '-')).join(',') === 'done,done,done,done,done,done,done'",
+  1000
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('[data-lamp]')].map((l) => (l.hasAttribute('data-on') ? 'on' : l.hasAttribute('data-fail') ? 'fail' : l.hasAttribute('data-done') ? 'done' : '-')).join(',')"
+ ],
+ [
+  "shot",
+  "replay-agw-K01-off.png"
+ ],
+ [
+  "eval",
+  "'card height ' + Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height)"
+ ],
+ [
+  "until",
+  "Math.round(document.querySelector('.iso-plate').getBoundingClientRect().height) === 625",
+  1000
  ],
  [
   "eval",

@@ -65,6 +65,15 @@
  ],
  [
   "until",
+  "document.querySelector('.kh-stage').dataset.scenario==='K01' && document.querySelector('.kh-bench').hasAttribute('data-one-backend')",
+  5000
+ ],
+ [
+  "key",
+  "ArrowRight"
+ ],
+ [
+  "until",
   "document.querySelector('.kh-stage').dataset.scenario==='G01'",
   5000
  ],

@@ -25,7 +25,7 @@ Preconditions:
 - **Sum.** At step 9 the journey waits for `[data-post="postA"][data-on]`. The say eval reads `tools/call sum(40,2) = 42`, and the display eval reads `42`. `a01-sum-42.png` shows `42` in the window on the post's front face.
 - **One backend.** Before that shot, the eval that counts shown `postB.*`, `gate.*`, `div.b`, `tray` and line `b` parts reads `0`. `a01-sum-42.png` shows one line from the diverter to the back post, and no front post, valve or tray.
 - **Report.** At `off` the report eval reads `kubeharness phase=ready cause=ok cleanup=succeeded remaining=0 profile=gateway-agentgateway install=6.2s`.
-- **Back to two backends.** After `off` the journey presses `ArrowRight`. The scenario becomes `G01`, the same count reads `19`, and `a01-then-g01.png` shows the front post, valve and tray again.
+- **Back to two backends.** After `off` the journey presses `ArrowRight` twice. The scenario becomes `K01`, which also has one backend, then `G01`, the same count reads `19`, and `a01-then-g01.png` shows the front post, valve and tray again.
 - **Video.** `scripts/record.sh gateway-agentgateway A01` films the whole run.
 
 ## Gotchas

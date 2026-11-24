@@ -56,7 +56,7 @@
 .kh-checks-lists{display:grid}
 .kh-checks{grid-area:1/1;margin:0;padding:0;list-style:none;visibility:hidden}
 .kh-checks[data-on]{visibility:visible}
-.kh-check{display:flex;align-items:center;gap:7px;padding:1px 0;color:var(--anatomy-muted)}
+.kh-check{display:flex;align-items:center;gap:7px;color:var(--anatomy-muted)}
 .kh-check[data-s="pass"],.kh-check[data-s="fail"]{color:var(--anatomy-strong)}
 .kh-box{flex:none;width:10px;height:10px;border:1px solid var(--anatomy-lo);border-radius:2px;margin-left:2px}
 .kh-check[data-s="pass"] .kh-box{background:var(--anatomy-green);border-color:var(--anatomy-green)}

@@ -8,8 +8,10 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { answerOf, bodyOf, checksOf, describe, groupsOf, objectsOf, parseTrace, stepsFromTrace, stoppedAt, timeMap, timed, verdictOf } from "../replay.mjs";
-import { LAMPS, PROFILES, REPLAY } from "../model.mjs";
+import { answerOf, bodyOf, checksOf, describe, groupsOf, modelIn, objectsOf, parseTrace, stepsFromTrace, stoppedAt, timeMap, timed, verdictOf } from "../replay.mjs";
+import { BACKENDS, LAMPS, PROFILES, REPLAY, SCENARIOS } from "../model.mjs";
+import { benchWordsIn } from "./bench-words.mjs";
+import { answersOf } from "./k01-route.mjs";
 
 const fig = new URL("..", import.meta.url).pathname;
 const dir = resolve(fig, process.argv[2] ?? "traces");
@@ -102,6 +104,20 @@ const rowsOn = (r, part) => r.objects.filter((o) => o.part === part).map(named).
 const inBody = (r, s) => s.at * 1000 >= bodyOf(r.events).from && s.at * 1000 < bodyOf(r.events).to;
 const podsOf = (r, part) => [...new Set(r.lines.filter((e) => e.ev === "pod" && e.ready && r.facts.owners[e.owner.split("/").slice(-2).join("/")] === part).map((e) => `Pod ${e.owner.split("/")[1]}/${e.pod}`))];
 const pulsesOf = (steps) => steps.flatMap((s) => s.pulses.map((p) => p.to));
+
+for (const [scenario, sc] of Object.entries(SCENARIOS)) if (BACKENDS[scenario].b == null) assert.ok(sc.steps.every((s) => s.send !== "b"), `${scenario}: the scripted body sends nothing to the hidden post b`);
+for (const [scenario, sc] of Object.entries(SCENARIOS)) {
+  const models = REPLAY[scenario]?.models;
+  if (!models) continue;
+  const ids = Object.keys(models);
+  sc.steps.forEach((s, i) => {
+    assert.ok(Number.isInteger(s.model) && s.model >= -1 && s.model < ids.length, `${scenario}: scripted step ${i}'s lamp slot ${s.model} is -1 or one of ${ids.length} lamps`);
+    const id = ids[s.model];
+    assert.equal(s.display, id ? models[id].tag : "", `${scenario}: scripted step ${i} displays ${id ? `${id}'s tag` : "nothing"}`);
+    assert.deepEqual(ids.filter((k) => s.say.includes(k)), id ? [id] : [], `${scenario}: scripted step ${i}'s say line names ${id ?? "no model"}`);
+  });
+}
+for (const r of runs) if (BACKENDS[r.scenario].b == null) assert.ok(!pulsesOf(r.steps).includes("b"), `${r.name}: no pulse travels to the hidden post b`);
 
 for (const r of runs) {
   const span = bodyOf(r.events);
@@ -234,6 +250,41 @@ for (const r of of("A01")) {
   assert.ok(r.steps.every((s) => s.gate), `${r.name}: no ReferenceGrant, so the valve stays open`);
 }
 
+// K01: testdata/k01 and k01-route/{good,crossed} in default; TestK01Routing in k01_test.go.
+for (const r of of("K01")) {
+  const models = r.facts.models;
+  const ids = Object.keys(models);
+  for (const id of ids) assert.ok(models[id].tag.length <= 5, `${r.name}: ${id}'s tag ${models[id].tag} fits the display window's five characters`);
+  assert.deepEqual(headsOf(r), ["Gateway default/edge", "HTTPRoute default/llm", "Service default/kronk"], `${r.name}: the three group headings`);
+  assert.deepEqual(rowsOn(r, "a"), ["AgentgatewayBackend default/gemma", "AgentgatewayBackend default/qwen", "AgentgatewayBackend default/smol", "Service default/kronk", ...podsOf(r, "a")].sort(), `${r.name}: the three backends, kronk's Service and its Pod on post a`);
+  assert.equal(r.steps.at(-1).verdict, "PASS", `${r.name}: the recorded run passed (report cause=ok)`);
+  const answers = answersOf(r.lines);
+  for (const a of answers) assert.ok(a.id in models, `${r.name}: the answer to /m/${a.alias}/ names ${a.id}, which is not a key of REPLAY.K01.models`);
+  for (const id of ids) assert.ok(answers.some((a) => a.id === id), `${r.name}: ${id} answers at least once`);
+  for (const a of answers) assert.equal(models[a.id].backend, a.want, `${r.name}: /m/${a.alias}/ under ${a.dir} goes to backend ${a.want}, and ${a.id} answered`);
+  assert.ok(answers.some((a) => a.want !== a.alias), `${r.name}: a request ran under a route that crosses its alias`);
+  const pulsed = r.steps.filter((s) => s.pulses.length);
+  for (const s of pulsed) {
+    const id = ids.find((k) => s.say.includes(`from ${k}`));
+    assert.equal(s.model, ids.indexOf(id), `${r.name}: step at ${s.at} lights the lamp of ${id ?? "no model"}`);
+    assert.equal(s.display, id ? models[id].tag : "", `${r.name}: step at ${s.at} displays ${id ? models[id].tag : "nothing"}`);
+    assert.deepEqual(s.pulses.map((p) => p.to), [id ? "a" : "none"], `${r.name}: step at ${s.at} sends its pulse to ${id ? "kronk" : "the diverter"}`);
+  }
+  assert.deepEqual([...new Set(pulsed.map((s) => s.model))].filter((m) => m >= 0).sort(), ids.map((_, i) => i), `${r.name}: every model lamp lights`);
+  assert.ok(pulsed.some((s) => s.model === -1 && s.say.includes("/m/unknown/")), `${r.name}: /m/unknown/ lights no lamp`);
+  assert.ok(r.steps.filter((s) => s.at * 1000 < bodyOf(r.events).from).every((s) => s.model === -1), `${r.name}: no lamp lights before the body`);
+  assert.ok(r.steps.every((s) => Number.isInteger(s.model) && s.display === (s.model >= 0 ? models[ids[s.model]].tag : "")) && r.steps.slice(r.steps.findIndex((s) => s.lamp === 6)).every((s) => s.model === -1 && s.display === ""), `${r.name}: every step carries a lamp slot and the display shows its tag or nothing, and cleanup turns the lamps and the display off`);
+  const senders = new Set(r.lines.filter((e) => e.ev === "request").map((e) => e.in));
+  const bodyModel = new Map(r.lines.filter((e) => e.ev === "body").map((e) => [e.id, ids.indexOf(modelIn(e.head))]));
+  const slots = r.lines.flatMap((e) => (e.ev === "request" ? [bodyModel.get(e.id) ?? -1] : e.ev === "call" && !senders.has(e.id) ? [-1] : []));
+  const changes = (list) => list.filter((m, i) => m !== list[i - 1]);
+  assert.deepEqual(changes(r.steps.map((s) => s.model)), changes([-1, ...slots]), `${r.name}: a lamp lights on its request and goes dark at the next call that sends no request`);
+  const idle = r.steps.filter((s) => inBody(r, s) && /^h\.Apply\(|^gw\.AwaitRoute\(/.test(s.say));
+  assert.ok(idle.length >= 4 && idle.every((s) => s.model === -1 && s.display === ""), `${r.name}: no lamp or tag shows while the test applies a route or waits for it`);
+  const play = timed(r.steps, timeMap(bodyOf(r.events), r.facts.body)).filter((s) => inBody(r, s));
+  assert.ok(play.every((s) => s.gap * r.facts.body.rate <= 12), `${r.name}: every body step fits the 12 s maxHold at ×${r.facts.body.rate}`);
+}
+
 execFileSync(process.execPath, ["build.mjs", "--traces", dir], { cwd: fig });
 const html = readFileSync(`${fig}kubeharness-replay.html`, "utf8");
 const panel = /<aside class="kh-names"[\s\S]*?<\/aside>/.exec(html)[0];
@@ -272,5 +323,5 @@ assert.equal(stoppedAt("kubeharness cluster=x phase=ready cause=ok cleanup=succe
 for (const r of runs) assert.equal(r.steps.at(-1).stopped, stoppedAt(r.events.find((e) => e.ev === "report").line), `${r.name}: the last step carries where the run stopped`);
 for (const r of runs) assert.ok(html.includes(`data-scenario="${r.scenario}"`), `${r.name}: the page has a ${r.scenario} button`);
 const text = panel.replace(/<[^>]+>/g, " ");
-assert.deepEqual(text.match(/cartridge|diverter|gate valve|\bposts?\b|\btray\b/gi), null, "no bench-part word in the panel or its caption");
+assert.deepEqual(benchWordsIn(text), [], "no bench-part word in the panel or its caption");
 console.log("replay check passed");
