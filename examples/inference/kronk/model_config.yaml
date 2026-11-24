@@ -1,0 +1,13 @@
+version: 1
+models:
+  unsloth/Qwen3-0.6B-Q8_0:
+    context-window: 2048
+    nseq-max: 1
+    sampling-parameters:
+      enable_thinking: "false"
+  bartowski/SmolLM2-135M-Instruct-Q8_0:
+    context-window: 2048
+    nseq-max: 1
+  ggml-org/gemma-3-270m-it-Q8_0:
+    context-window: 2048
+    nseq-max: 1
