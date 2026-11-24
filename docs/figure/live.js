@@ -76,6 +76,11 @@ const ctor = { "gateway-api": "EnvoyGateway()", "gateway-agentgateway": "AgentGa
 
 const scenariosOf = (profile) => M.PROFILES[profile].scenarios.filter((s) => !REPLAY || REPLAY[profile]?.[s]);
 
+function profileFor(profile, scenario) {
+  const holders = Object.keys(M.PROFILES).filter((p) => M.PROFILES[p].scenarios.includes(scenario));
+  return holders.length === 1 ? holders[0] : profile;
+}
+
 function stepsFor(profile, scenario) {
   const run = REPLAY?.[profile][scenario];
   if (run) return timed(run.steps, timeMap(run.body, { ...run.map, ...MAP }));
@@ -134,7 +139,7 @@ const state = {
   flowAt: 0,
   flashes: new Map(),
 };
-if (state.scenario === "A01") state.profile = "gateway-agentgateway";
+state.profile = profileFor(state.profile, state.scenario);
 if (!scenariosOf(state.profile).includes(state.scenario)) state.scenario = scenariosOf(state.profile)[0];
 
 function begin(profile, scenario) {
@@ -364,7 +369,7 @@ new IntersectionObserver((entries) => {
 }, { rootMargin: "120px 0px" }).observe(stage);
 
 function select(profile, scenario, { step } = {}) {
-  if (scenario === "A01") profile = "gateway-agentgateway";
+  profile = profileFor(profile, scenario);
   if (!scenariosOf(profile).includes(scenario)) scenario = scenariosOf(profile)[0];
   state.touring = false;
   begin(profile, scenario);
