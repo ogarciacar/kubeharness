@@ -27,6 +27,7 @@ const leverKnob = svg.querySelector('[data-part="lever-knob"]');
 const display = svg.querySelector('[data-part="display"]');
 const plate = svg.querySelector('[data-part="plate"]');
 const mcp = svg.querySelector(".kh-mcp");
+const modelLamps = $$("[data-model]");
 const gateBody = svg.querySelector('[data-kh="gate"]');
 const divBody = svg.querySelector('[data-kh="div"]');
 const tray = svg.querySelector('[data-kh="tray"]');
@@ -154,6 +155,8 @@ function begin(profile, scenario) {
   state.cart = 1;
   state.cartOpacity = 0;
   bench.setAttribute("data-profile", profile);
+  bench.toggleAttribute("data-models", state.steps.some((s) => s.model !== undefined));
+  bench.toggleAttribute("data-one-backend", M.BACKENDS[scenario].b == null);
   for (const g of [...groups, ...checkLists]) g.toggleAttribute("data-on", g.dataset.run === `${profile} ${scenario}`);
   const list = groups.find((g) => g.hasAttribute("data-on"));
   const listed = list ? [...list.querySelectorAll(".kh-group")].map((g) => g.dataset.part) : [];
@@ -192,6 +195,7 @@ function enter(i, carry = 0) {
   });
   display.textContent = s.display ?? "";
   mcp.toggleAttribute("data-on", !!s.mcp);
+  showModel(s.model);
   sayEl.textContent = s.say ?? "";
   reportEl.textContent = s.report ?? reportLine(state.profile, state.scenario, s);
   if (plate && s.plate) plate.textContent = s.plate;
@@ -204,6 +208,10 @@ function enter(i, carry = 0) {
   for (const p of s.pulses ?? []) send(p.to, p.delay / SPEED - carry);
   state.flowAt = 0;
   if (state.frozen) settleNow();
+}
+
+function showModel(slot) {
+  for (const el of modelLamps) el.toggleAttribute("data-on", +el.dataset.model === slot);
 }
 
 function showClock(s) {

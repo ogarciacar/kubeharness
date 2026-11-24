@@ -35,6 +35,10 @@
   6000
  ],
  [
+  "eval",
+  "[...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].filter((el) => getComputedStyle(el).display !== 'none').length"
+ ],
+ [
   "shot",
   "a01-sum-42.png"
  ],
@@ -54,5 +58,27 @@
  [
   "eval",
   "document.querySelector('[data-report]').textContent"
+ ],
+ [
+  "key",
+  "ArrowRight"
+ ],
+ [
+  "until",
+  "document.querySelector('.kh-stage').dataset.scenario==='G01'",
+  5000
+ ],
+ [
+  "eval",
+  "[...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].filter((el) => getComputedStyle(el).display !== 'none').length"
+ ],
+ [
+  "until",
+  "document.querySelector('.kh-stage').dataset.step==='6'",
+  30000
+ ],
+ [
+  "shot",
+  "a01-then-g01.png"
  ]
 ]

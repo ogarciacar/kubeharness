@@ -72,6 +72,7 @@ Journeys act the way a user does. They click `button[data-profile="…"]` and `b
 | `[data-piece="gate"]` `transform` | Gate stem lift. `translate(0.00 -0.00)` is closed. A non-zero y is open. |
 | `[data-piece="cart"]` `style.opacity` | `1` means the cartridge is installed and shown |
 | `.kh-bench` `data-profile` | Which cartridge top is drawn |
+| `.kh-bench` `data-one-backend` | The run has no second backend (`model.mjs` `BACKENDS[scenario].b` is `null`, as in A01). The front post, line `b`, the diverter's `b` outlet, the gate valve and the tray are hidden. |
 | `[data-part="display"]` | The calculator display text (`42` in A01) |
 | `[data-part="plate"]` | Replay page only: the engraved cluster name |
 | `[data-corner="fig"]`, `[data-corner="hint"]` `innerText` | Plate corners, top left and bottom left. On the scripted pages `Fig 1` and `PICK A PROFILE AND A SCENARIO`. On the replay page `Replay` and the running trace header's `test`, for example `TestG02ReferenceGrant/gateway-api`, set on every profile or scenario change and shown in the trace's own casing. |

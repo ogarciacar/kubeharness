@@ -286,14 +286,27 @@ function leverArm(deg) {
   return k.lineOnTop([0, 0], [Math.cos(t) * LEVER.r, Math.sin(t) * LEVER.r], DIV_H + 3.2, P);
 }
 
-function backend(name, plan, z0, { display = false, part } = {}) {
+const MODEL_LAMPS = Math.max(0, ...Object.values(M.REPLAY).map((r) => Object.keys(r.models ?? {}).length));
+function modelLamps(name, plan) {
+  const cx = plan.x + plan.w / 2;
+  const y = plan.y + plan.d;
+  const z = POST_TOP - 4;
+  for (let i = 0; i < MODEL_LAMPS; i++) {
+    const x = cx + (i - (MODEL_LAMPS - 1) / 2) * 9;
+    const F = G.frameAlong([x, y, z], [0, 1, 0]);
+    const shape = R.solid(A.disc(F, 0, 1.4, 2.2, { name: `${name}.model${i}` }));
+    put(`${name}.model${i}`, [x, y + 0.7, z], S(G.disc(0, 1.4, 2.2, F, P), { tone: "hi" }), [shape], { attrs: ` data-kh="lamp" data-model="${i}"` });
+  }
+}
+
+function backend(name, plan, z0, { display = false, part, models = false } = {}) {
   const base = k.insetPlan(plan, -3);
   slab(`${name}.base`, base, z0, 4, { tone: "lo" }, { steps: 4, bevel: 0.5, extra: Dots(k.corners(base, 2.6).map(([x, y]) => at([x, y, z0 + 4])), { size: 0.42 }) });
   const seams = Ln(k.sideSeam(plan, z0 + 12, P, 4), { tone: "faint" }) + Ln(k.sideSeam(plan, POST_TOP - 8, P, 4), { tone: "faint" });
   let face = "";
   if (display) {
     const m = k.sideMatrix([0, plan.y + plan.d], 0, P, "left");
-    const win = { x: plan.x + 8, y: -(POST_TOP - 12), w: 20, h: 9 };
+    const win = { x: plan.x + 5, y: -(POST_TOP - 12), w: 26, h: 9 };
     face = `<g transform="${m}"><clipPath id="kh-win"><rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="1.2"/></clipPath><rect class="kh-window" x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="1.2"/><g clip-path="url(#kh-win)"><text class="kh-digits" data-part="display" x="${win.x + win.w - 2}" y="${win.y + win.h - 2}" text-anchor="end" font-size="6.6"></text></g></g>`;
   }
   const vents = ventSlots(plan.y + plan.d, plan.x + 8, plan.x + 28, z0 + 26, z0 + 15, 6);
@@ -302,6 +315,7 @@ function backend(name, plan, z0, { display = false, part } = {}) {
   const cy = plan.y + plan.d / 2;
   post(`${name}.lamp.ring`, cx, cy, 6.4, POST_TOP, 1.6, { tone: "lo" }, { steps: 32 });
   post(`${name}.lamp`, cx, cy, 4.6, POST_TOP + 1.6, 2.6, { tone: "hi" }, { steps: 32, attrs: ` data-kh="lamp" data-post="${name}"` });
+  if (models) modelLamps(name, plan);
   port(`${name}.port`, plan.x - PORT_T, plan.x, cy, ZT);
 }
 
@@ -325,7 +339,7 @@ bulkhead();
 socket();
 cartridge();
 diverter();
-backend("postA", POST_A, 0, { display: true, part: "a" });
+backend("postA", POST_A, 0, { display: true, part: "a", models: true });
 backend("postB", POST_B, TRAY_H, { part: "b" });
 gateValve();
 

@@ -6,6 +6,7 @@ An interactive isometric figure that explains kubeharness as a physical test ben
 - The cartridge in the socket is the gateway profile.
 - The diverter's lever is the HTTPRoute rule.
 - The gate valve is the ReferenceGrant.
+- A scenario with one backend (`BACKENDS` `b: null`, as in A01) hides the front post, its line, the diverter's `b` outlet, the gate valve and the namespace tray.
 - The lamps show the lifecycle: the five report phases (`new`, `validating`, `provisioning`, `wait-usable`, `ready`), then `test` and `cleanup`.
 
 Every label and number comes from [`model.mjs`](model.mjs), which names the file each value was read from.
@@ -65,7 +66,7 @@ node build.mjs --traces traces --light    # writes kubeharness-replay-light.html
 node tools/replay-check.mjs [dir]         # must print "replay check passed"
 ```
 
-`--traces` takes a directory (every `*.jsonl` under it) or one file. [`replay.mjs`](replay.mjs) validates each line and fails with `file:line` on an unknown `ev` or a bad field. It then turns the events into the steps `live.js` plays, at their recorded times. The bench facts it needs are `REPLAY` in `model.mjs`, one entry per scenario with the same fields, each citing its testdata file: the test name, which backend stands on which post, the paths each rule sends, the route and path the gate valve gates (G02 only; without one the valve stays open), the weighted route and the post each applied directory selects (G03 only), the MCP path and how to read its answers (A01 only), the bench part of each object, the primary kind of each part, and the body's time map. The reducer reads those tables and has no per-scenario branch. The plate shows the trace's cluster name, the bottom-right corner the running profile's pinned versions and the Kind cluster, and the report line at the end is the one the test logged. Only scenarios with a trace can be picked.
+`--traces` takes a directory (every `*.jsonl` under it) or one file. [`replay.mjs`](replay.mjs) validates each line and fails with `file:line` on an unknown `ev` or a bad field. It then turns the events into the steps `live.js` plays, at their recorded times. The bench facts it needs are `REPLAY` in `model.mjs`, one entry per scenario with the same fields, each citing its testdata file: the test name, which backend stands on which post, the paths each rule sends, the route and path the gate valve gates (G02 only; without one the valve stays open, or is hidden in a one-backend run), the weighted route and the post each applied directory selects (G03 only), the MCP path and how to read its answers (A01 only), the bench part of each object, the primary kind of each part, and the body's time map. The reducer reads those tables and has no per-scenario branch. The plate shows the trace's cluster name, the bottom-right corner the running profile's pinned versions and the Kind cluster, and the report line at the end is the one the test logged. Only scenarios with a trace can be picked.
 
 What each scenario moves:
 - **G01.** Each request turns the lever to the rule it matched and its pulse lights the post whose backend answered. The unrouted and unknown-host requests stop at the diverter.

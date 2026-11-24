@@ -23,10 +23,12 @@ Preconditions:
 - **Run it.** `scripts/drive.sh a01-mcp journeys/a01-mcp.json`.
 - **MCP port.** At step 7 the `.kh-mcp` eval reads `true`, and the say eval reads `POST http://mcp.example/mcp · mcp initialize`.
 - **Sum.** At step 9 the journey waits for `[data-post="postA"][data-on]`. The say eval reads `tools/call sum(40,2) = 42`, and the display eval reads `42`. `a01-sum-42.png` shows `42` in the window on the post's front face.
+- **One backend.** Before that shot, the eval that counts shown `postB.*`, `gate.*`, `div.b`, `tray` and line `b` parts reads `0`. `a01-sum-42.png` shows one line from the diverter to the back post, and no front post, valve or tray.
 - **Report.** At `off` the report eval reads `kubeharness phase=ready cause=ok cleanup=succeeded remaining=0 profile=gateway-agentgateway install=6.2s`.
+- **Back to two backends.** After `off` the journey presses `ArrowRight`. The scenario becomes `G01`, the same count reads `19`, and `a01-then-g01.png` shows the front post, valve and tray again.
 - **Video.** `scripts/record.sh gateway-agentgateway A01` films the whole run.
 
 ## Gotchas
 
 - The display keeps `42` until cleanup. Its presence alone doesn't prove the call step ran, so pair it with the step-9 say eval.
-- The front post and gate valve are idle in A01. That is expected, because A01 has one backend.
+- A01 has one backend (`BACKENDS.A01.b` is `null` in `model.mjs`), so `.kh-bench` carries `data-one-backend` and the CSS hides the front post, its line, the diverter's `b` outlet, the gate valve and the tray. Any scenario whose `BACKENDS` entry has `b: null` gets the same bench.

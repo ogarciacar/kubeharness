@@ -34,3 +34,6 @@
 .kh-panel{fill:none;stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight);vector-effect:non-scaling-stroke}
 .kh-slot{fill:var(--anatomy-shade-0);stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight);vector-effect:non-scaling-stroke}
 .kh-screw{fill:var(--anatomy-dot)}
+.kh-bench:not([data-models]) [data-model]{display:none}
+.kh-bench[data-one-backend] :is([data-name^="postB."],[data-name^="gate."],[data-name="div.b"],[data-name="tray"],[data-route="b"]){display:none}
+[data-model][data-on]>.iso-solid>.iso-shade{fill:var(--anatomy-lit)}
