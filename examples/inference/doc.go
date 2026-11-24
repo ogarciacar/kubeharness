@@ -14,4 +14,10 @@
 // The oracle tests need no image.
 //
 //	go test -count=1 -v .
+//
+// TestK01Routing builds the image itself, routes /m/qwen/, /m/smol/ and
+// /m/gemma/ through AgentGateway to the one kronk Pod, and proves a crossed
+// route fails the oracle.
+//
+//	go test -tags e2e -count=1 -timeout 30m -run '^TestK01Routing$' -v .
 package inference

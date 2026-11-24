@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kronk
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: kronk}
+  template:
+    metadata:
+      labels: {app: kronk}
+    spec:
+      containers:
+        - name: kronk
+          image: kubeharness.local/kronk-k01:test
+          imagePullPolicy: Never
+          ports:
+            - {name: api, containerPort: 11435}
+            - {name: metrics, containerPort: 11445}
+          startupProbe:
+            exec: {command: [/kronk/warm.sh]}
+            periodSeconds: 2
+            timeoutSeconds: 60
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /v1/readiness, port: api}
+            periodSeconds: 1
+          resources:
+            requests: {cpu: "1", memory: 2Gi}
+            limits: {memory: 4Gi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kronk
+spec:
+  selector: {app: kronk}
+  ports:
+    - {name: api, port: 11435, targetPort: api}
+    - {name: metrics, port: 11445, targetPort: metrics}

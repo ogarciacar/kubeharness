@@ -130,3 +130,32 @@ jobs:
       - name: leaks
         if: always()
         run: hack/leaks.sh '^(kh|a01-baseline)-'
+
+  inference:
+    needs: unit
+    runs-on: ubuntu-26.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # setup-buildx makes a docker-container builder current; without default-load the test's own docker build stays out of the daemon.
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: default-load=true
+      - name: kronk image layers from the Actions cache
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: examples/inference/kronk
+          tags: kubeharness.local/kronk-k01:test
+          load: true
+          cache-from: type=gha,scope=kronk-k01
+          cache-to: type=gha,mode=max,scope=kronk-k01
+      - run: go -C examples/inference test -race -tags e2e -count=1 -timeout 30m -v ./...
+      - name: disk
+        if: always()
+        run: df -h /
+      - name: leaks
+        if: always()
+        run: hack/leaks.sh '^kh-'

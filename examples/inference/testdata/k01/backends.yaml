@@ -1,0 +1,35 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: qwen
+spec:
+  ai:
+    provider:
+      custom:
+        backendRef: {name: kronk, port: 11435}
+        formats: [{type: Completions}]
+        model: unsloth/Qwen3-0.6B-Q8_0
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: smol
+spec:
+  ai:
+    provider:
+      custom:
+        backendRef: {name: kronk, port: 11435}
+        formats: [{type: Completions}]
+        model: bartowski/SmolLM2-135M-Instruct-Q8_0
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: gemma
+spec:
+  ai:
+    provider:
+      custom:
+        backendRef: {name: kronk, port: 11435}
+        formats: [{type: Completions}]
+        model: ggml-org/gemma-3-270m-it-Q8_0
