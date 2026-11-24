@@ -29,5 +29,5 @@ Preconditions:
 ## Gotchas
 
 - `hack/leaks.sh` never deletes; exit `1` means "leaks found", not script failure.
-- Default pattern is `^kh-`. A decoy cluster named `kind` is intentionally invisible to the default pattern.
+- Default pattern is `^kh-`. A decoy cluster named `kind` is intentionally invisible to the default pattern. So are the baseline clusters that `examples/gateway` and `examples/orders` create (`g01-baseline-…`, `m01-baseline-…`). CI lists them with a wider pattern, for example `hack/leaks.sh '^(kh|g01-baseline)-'`, and `cleanup.sh` refuses to remove them.
 - `hack/screen.sh` repeats e2e and tallies leaks; it is soak tooling, not required for a single-feature proof.

@@ -11,7 +11,7 @@ The diverter's lever is the HTTPRoute. For each of `g01Routes` in `examples/gate
 ## How to get to it (user POV)
 
 - Click a profile, then `G01`.
-- Press `←` or `→` with the figure focused until the readout shows `G01`.
+- Press `←` or `→` with the figure focused until the readout shows `G01`. The keys cycle `G01`, `G02`, `G03`, `A01`, `K01`. Passing `A01` or `K01` switches the profile to agentgateway, and it stays there when the cycle returns to `G01`.
 
 ## Driving it with drive.sh
 

@@ -35,8 +35,13 @@
   6000
  ],
  [
+  "until",
+  "[...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].length > 0 && [...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].filter((el) => getComputedStyle(el).display !== 'none').length === 0",
+  1000
+ ],
+ [
   "eval",
-  "[...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].filter((el) => getComputedStyle(el).display !== 'none').length"
+  "'hidden parts shown ' + [...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].filter((el) => getComputedStyle(el).display !== 'none').length + ' of ' + [...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].length"
  ],
  [
   "shot",
@@ -78,8 +83,13 @@
   5000
  ],
  [
+  "until",
+  "[...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].length > 0 && [...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].filter((el) => getComputedStyle(el).display !== 'none').length === [...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].length",
+  5000
+ ],
+ [
   "eval",
-  "[...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].filter((el) => getComputedStyle(el).display !== 'none').length"
+  "'hidden parts shown ' + [...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].filter((el) => getComputedStyle(el).display !== 'none').length + ' of ' + [...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].length"
  ],
  [
   "until",

@@ -1,6 +1,6 @@
 ---
 name: verify-kubeharness
-description: Drive kubeharness (Go Kind-cluster test library) via go test and hack scripts; use when proving owned-cluster lifecycle, workload methods, Gateway install/traffic, or leak detection against a real Docker/Kind stack.
+description: Drive kubeharness (Go Kind-cluster test library) via go test and hack scripts; use when proving owned-cluster lifecycle, workload methods, Gateway install/traffic (G01 routing, A01 MCP, K01 inference routing to three models), or leak detection against a real Docker/Kind stack.
 ---
 
 # Verify kubeharness
@@ -48,7 +48,10 @@ Stable handles are Go test names and report-line fields, not UI selectors:
 | `--- PASS: Test…` | Feature assertion passed |
 | `kubeharness cluster=kh-… phase=ready cause=ok cleanup=succeeded remaining=0` | Owned cluster became usable and was disposed |
 | `profile=gateway-api install=…` | Gateway profile recorded on the report line |
+| `/m/<alias>/ answered as <model id>` | K01 (`TestK01Routing`): the request for that alias reached the model its route pins |
 | `hack/leaks.sh` → `kubeharness leaks: 0` | No leftover `kh-*` containers |
+
+The examples are nested modules. Pass `./examples/gateway`, `./examples/mcp` or `./examples/inference` as the last argument and `drive.sh` runs `go -C <dir> test … .`, as CI does. `features/gateway-traffic.md` has the commands.
 
 Unit / fake-provider drives (no Docker Kind create) omit `-tags e2e` and target packages such as `.` or `./internal/...`. Feature files say which.
 
@@ -76,7 +79,7 @@ Proof artifacts go under:
 .cursor/skills/verify-kubeharness/scripts/cleanup.sh kh-abc…  # named only
 ```
 
-Removes only `kh-*` Kind clusters (via `kind delete` when present, else labeled `docker rm -f`). Does not touch Docker Desktop, does not touch evidence. After a failed drive, always run cleanup so ports and node containers do not strand the next attempt.
+Removes only `kh-*` Kind clusters (via `kind delete` when present, else labeled `docker rm -f`). Does not touch Docker Desktop, does not touch evidence. After a failed drive, always run cleanup so ports and node containers do not strand the next attempt. The same holds after a drive stopped with Ctrl-C or `kill`: kubeharness does not handle SIGINT or SIGTERM, so the cluster stays up and no report line prints.
 
 ## Helpers
 

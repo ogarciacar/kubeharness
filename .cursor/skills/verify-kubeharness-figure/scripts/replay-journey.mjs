@@ -21,7 +21,7 @@ const CARD_HEIGHT_PX = 625;
 
 const crossedAnswer = (ev, models) => {
   const a = answersOf(ev).find((a) => a.want !== a.alias);
-  return { alias: a.alias, id: Object.keys(models).find((id) => models[id].backend === a.want) };
+  return a && { alias: a.alias, id: Object.keys(models).find((id) => models[id].backend === a.want) };
 };
 
 const runs = {};
@@ -205,6 +205,7 @@ const BODY = {
   ],
   // k01_test.go TestK01Routing.
   K01: (p, f) => {
+    if (!f.crossed) throw new Error(`${f.test} on ${f.cluster}: the trace passes but no /m/<alias>/ request was answered under a route that sends it to another alias's backend, so the K01 leg has no crossed answer to wait for`);
     const ids = Object.keys(REPLAY.K01.models);
     const answered = (alias, id) => `${sayHas(`POST http://llm.example/m/${alias}/`)} && ${sayHas(`from ${id}`)} && ${display} === '${REPLAY.K01.models[id].tag}' && ${modelLamps} === '${ids.map((k) => (k === id ? 1 : 0)).join("")}'`;
     const dark = `${display} === '' && ${modelLamps} === '${ids.map(() => 0).join("")}'`;

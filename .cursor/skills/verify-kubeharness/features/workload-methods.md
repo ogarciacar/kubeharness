@@ -22,7 +22,7 @@ Preconditions:
 - Docker can build a small local image (used inside `TestWorkloadMethodsOnRealKind`).
 
 - **Happy path.** Run `.cursor/skills/verify-kubeharness/scripts/drive.sh workload-methods -tags e2e -count=1 -timeout 25m -v -run '^TestWorkloadMethodsOnRealKind$' ./e2e`. Exit code `0` and log contains `--- PASS: TestWorkloadMethodsOnRealKind`.
-- **Failed Job evidence.** Run `.cursor/skills/verify-kubeharness/scripts/drive.sh workload-job-fail -tags e2e -count=1 -timeout 20m -v -run '^TestFailingJobStopsTheTestWithEvidence$' ./e2e`. Exit code `0`; the helper failure output retained in the log must show Job failure evidence (not only "did not complete"). Evidence appears when the outer test fails the helper — look for the captured failure text in the log, not a green helper PASS.
+- **Failed Job evidence.** Run `.cursor/skills/verify-kubeharness/scripts/drive.sh workload-job-fail -tags e2e -count=1 -timeout 20m -v -run '^TestFailingJobStopsTheTestWithEvidence$' ./e2e`. Exit code `0` and log contains `--- PASS: TestFailingJobStopsTheTestWithEvidence`. The outer test runs a helper test that must fail, and checks the helper's output itself for the Job failure evidence (`job migrate-fail failed`, `reason=BackoffLimitExceeded`, `terminated exit=3`, the container's log line) and for a `cause=test-failed cleanup=succeeded remaining=0` report line. It prints that output, under `helper output:`, only when one of those checks fails, so a passing log does not show the evidence.
 - **Proof.** Artifact log shows the PASS lines; `*.leaks-after.txt` has no new `kh-*` leftovers.
 
 ## Gotchas

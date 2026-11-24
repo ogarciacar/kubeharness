@@ -9,7 +9,7 @@ This directory is the maintained source for verifying user-facing behavior of th
 - `.cursor/skills/verify-kubeharness/scripts/doctor.sh` exits 0 (Docker up for any e2e feature).
 - Evidence directory: `.cursor/skills/verify-kubeharness/artifacts/<run-id>/` (created by `drive.sh`).
 - Never delete non-`kh-*` Kind clusters. Never stop the Docker daemon.
-- Prefer one e2e drive at a time on a laptop; parallel `kh-*` clusters are supported by the library but share Docker CPU/disk. A single `examples/gateway` drive already runs two clusters at once, one per profile.
+- Prefer one e2e drive at a time on a laptop; parallel `kh-*` clusters are supported by the library but share Docker CPU/disk. A single `examples/gateway` drive already runs two clusters at once, one per profile. `examples/mcp` (A01) and `examples/inference` (K01) run one.
 
 ## Driving conventions
 
@@ -43,5 +43,5 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Owned cluster lifecycle](./owned-cluster.md) covers `New`, usable API, disposal, and failing-test cleanup on real Kind.
 - [Workload methods](./workload-methods.md) covers Apply, WaitReady, RunJob, Forward, and LoadImage.
 - [Install Gateway](./install-gateway.md) covers the Envoy Gateway and Agent Gateway profiles and failure evidence.
-- [Gateway traffic](./gateway-traffic.md) covers `Gateway`, `Client`, `AwaitRoute`, `AwaitResponse`, and `AwaitProbe`.
+- [Gateway traffic](./gateway-traffic.md) covers `Gateway`, `Client`, `AwaitRoute`, `AwaitResponse`, and `AwaitProbe`, through G01 routing, A01 MCP and K01 inference routing to three models.
 - [Leak detection](./leak-detection.md) covers `hack/leaks.sh` listing and the cleanup helper.

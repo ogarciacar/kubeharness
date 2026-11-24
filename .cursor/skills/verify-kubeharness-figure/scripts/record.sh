@@ -5,8 +5,9 @@
 # video plays at true figure speed however slow the capture is. --replay
 # films kubeharness-replay*.html, a recorded trace whose setup plays --setup
 # times faster (default 10, 1 for real time), whose test body plays --body
-# times slower (default 20) with a --hold second minimum per step (default
-# 1.2), and everything divided by --speed.
+# times slower (default: the scenario's rate in model.mjs REPLAY) with a
+# --hold second minimum per step (default 1.2), and everything divided by
+# --speed.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
 profile="${1:?profile}"; scenario="${2:?scenario}"; shift 2
