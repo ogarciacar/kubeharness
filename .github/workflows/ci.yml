@@ -151,7 +151,7 @@ jobs:
           tags: kubeharness.local/kronk-k01:test
           load: true
           cache-from: type=gha,scope=kronk-k01
-          cache-to: type=gha,mode=max,scope=kronk-k01
+          cache-to: type=gha,mode=max,scope=kronk-k01,ignore-error=true
       - run: go -C examples/inference test -race -tags e2e -count=1 -timeout 30m -v ./...
       - name: disk
         if: always()
