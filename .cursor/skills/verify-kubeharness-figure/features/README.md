@@ -42,5 +42,5 @@ Each feature file starts with an H1 title and one paragraph describing what the 
 - [G02 ReferenceGrant](./g02-referencegrant.md) covers denied, granted and revoked access across namespaces at the gate valve.
 - [G03 weight flip](./g03-weight-flip.md) covers the blue, green, blue flips under steady traffic.
 - [A01 MCP](./a01-mcp.md) covers the MCP port, `tools/list`, and `sum(40,2) = 42` on the calculator display.
-- [K01 models](./k01-models.md) covers the three model lamps and the display tag on the kronk post, `/m/unknown/` stopping at the diverter, the crossed route, and the one-backend bench.
+- [K01 models](./k01-models.md) covers the three model lamps, the tag beside each, the bold tag of the lit lamp and the display tag on the kronk post, `/m/unknown/` stopping at the diverter, the crossed route, and the one-backend bench.
 - [Replay](./replay.md) covers the replay page: real recorded G01, G02, G03, A01 and K01 runs with the real cluster name, Pods, object names, lever, gate, MCP port, model lamps, display, pulses and report line at their recorded times.

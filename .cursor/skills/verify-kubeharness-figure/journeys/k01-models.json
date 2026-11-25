@@ -28,6 +28,15 @@
  ],
  [
   "until",
+  "[...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') === 'QWEN3,SMOL2,GEMMA' && document.querySelectorAll('[data-unkeyed]').length > 0 && [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length === 0",
+  5000
+ ],
+ [
+  "eval",
+  "'tags ' + [...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') + ' · vents shown ' + [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length + ' of ' + document.querySelectorAll('[data-unkeyed]').length"
+ ],
+ [
+  "until",
   "[...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].length > 0 && [...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].filter((el) => getComputedStyle(el).display !== 'none').length === 0",
   5000
  ],
@@ -37,16 +46,16 @@
  ],
  [
   "until",
-  "document.querySelector('.kh-stage').dataset.step === '6' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000' && document.querySelector('[data-part=\"display\"]').textContent === '' && document.querySelector('[data-say]').textContent.includes('AwaitRoute llm RouteReady')",
+  "document.querySelector('.kh-stage').dataset.step === '6' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '000' && document.querySelector('[data-part=\"display\"]').textContent === '' && document.querySelector('[data-say]').textContent.includes('AwaitRoute llm RouteReady')",
   30000
  ],
  [
   "eval",
-  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent + ' · bold ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('')"
  ],
  [
   "until",
-  "document.querySelector('.kh-stage').dataset.step === '7' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '100' && document.querySelector('[data-part=\"display\"]').textContent === 'QWEN3' && document.querySelector('[data-say]').textContent.includes('/m/qwen/ → unsloth/Qwen3-0.6B-Q8_0')",
+  "document.querySelector('.kh-stage').dataset.step === '7' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '100' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '100' && document.querySelector('[data-part=\"display\"]').textContent === 'QWEN3' && document.querySelector('[data-say]').textContent.includes('/m/qwen/ → unsloth/Qwen3-0.6B-Q8_0')",
   30000
  ],
  [
@@ -60,11 +69,11 @@
  ],
  [
   "eval",
-  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent + ' · bold ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('')"
  ],
  [
   "until",
-  "document.querySelector('.kh-stage').dataset.step === '8' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '010' && document.querySelector('[data-part=\"display\"]').textContent === 'SMOL2' && document.querySelector('[data-say]').textContent.includes('/m/smol/ → bartowski/SmolLM2-135M-Instruct-Q8_0')",
+  "document.querySelector('.kh-stage').dataset.step === '8' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '010' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '010' && document.querySelector('[data-part=\"display\"]').textContent === 'SMOL2' && document.querySelector('[data-say]').textContent.includes('/m/smol/ → bartowski/SmolLM2-135M-Instruct-Q8_0')",
   30000
  ],
  [
@@ -78,11 +87,11 @@
  ],
  [
   "eval",
-  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent + ' · bold ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('')"
  ],
  [
   "until",
-  "document.querySelector('.kh-stage').dataset.step === '9' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '001' && document.querySelector('[data-part=\"display\"]').textContent === 'GEMMA' && document.querySelector('[data-say]').textContent.includes('/m/gemma/ → ggml-org/gemma-3-270m-it-Q8_0')",
+  "document.querySelector('.kh-stage').dataset.step === '9' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '001' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '001' && document.querySelector('[data-part=\"display\"]').textContent === 'GEMMA' && document.querySelector('[data-say]').textContent.includes('/m/gemma/ → ggml-org/gemma-3-270m-it-Q8_0')",
   30000
  ],
  [
@@ -96,11 +105,11 @@
  ],
  [
   "eval",
-  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent + ' · bold ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('')"
  ],
  [
   "until",
-  "document.querySelector('.kh-stage').dataset.step === '10' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000' && document.querySelector('[data-part=\"display\"]').textContent === '' && document.querySelector('[data-say]').textContent.includes('/m/unknown/ → 404 route not found')",
+  "document.querySelector('.kh-stage').dataset.step === '10' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '000' && document.querySelector('[data-part=\"display\"]').textContent === '' && document.querySelector('[data-say]').textContent.includes('/m/unknown/ → 404 route not found')",
   30000
  ],
  [
@@ -114,11 +123,11 @@
  ],
  [
   "eval",
-  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent + ' · bold ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('')"
  ],
  [
   "until",
-  "document.querySelector('.kh-stage').dataset.step === '11' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '100' && document.querySelector('[data-part=\"display\"]').textContent === 'QWEN3' && document.querySelector('[data-say]').textContent.includes('h.Apply(testdata/k01-route/crossed) · /m/smol/ → unsloth/Qwen3-0.6B-Q8_0, rejected')",
+  "document.querySelector('.kh-stage').dataset.step === '11' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '100' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '100' && document.querySelector('[data-part=\"display\"]').textContent === 'QWEN3' && document.querySelector('[data-say]').textContent.includes('h.Apply(testdata/k01-route/crossed) · /m/smol/ → unsloth/Qwen3-0.6B-Q8_0, rejected')",
   30000
  ],
  [
@@ -127,11 +136,11 @@
  ],
  [
   "eval",
-  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent + ' · bold ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('')"
  ],
  [
   "until",
-  "document.querySelector('.kh-stage').dataset.step === '12' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '010' && document.querySelector('[data-part=\"display\"]').textContent === 'SMOL2' && document.querySelector('[data-say]').textContent.includes('h.Apply(testdata/k01-route/good) · /m/smol/ → bartowski/SmolLM2-135M-Instruct-Q8_0')",
+  "document.querySelector('.kh-stage').dataset.step === '12' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '010' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '010' && document.querySelector('[data-part=\"display\"]').textContent === 'SMOL2' && document.querySelector('[data-say]').textContent.includes('h.Apply(testdata/k01-route/good) · /m/smol/ → bartowski/SmolLM2-135M-Instruct-Q8_0')",
   30000
  ],
  [
@@ -145,16 +154,16 @@
  ],
  [
   "eval",
-  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent + ' · bold ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('')"
  ],
  [
   "until",
-  "document.querySelector('.kh-stage').dataset.phase === 'cleanup' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000' && document.querySelector('[data-part=\"display\"]').textContent === ''",
+  "document.querySelector('.kh-stage').dataset.phase === 'cleanup' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '000' && document.querySelector('[data-part=\"display\"]').textContent === ''",
   30000
  ],
  [
   "eval",
-  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "document.querySelector('[data-say]').textContent + ' · lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent + ' · bold ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('')"
  ],
  [
   "until",
@@ -176,12 +185,17 @@
  ],
  [
   "until",
+  "[...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') === '' && [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length === document.querySelectorAll('[data-unkeyed]').length",
+  5000
+ ],
+ [
+  "until",
   "[...document.querySelectorAll('[data-model]')].filter((l) => getComputedStyle(l).display !== 'none').length === 0 && [...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].length > 0 && [...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].filter((el) => getComputedStyle(el).display !== 'none').length === [...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].length",
   5000
  ],
  [
   "eval",
-  "'hidden parts shown ' + [...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].filter((el) => getComputedStyle(el).display !== 'none').length + ' of ' + [...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].length + ' · model lamps drawn ' + [...document.querySelectorAll('[data-model]')].filter((l) => getComputedStyle(l).display !== 'none').length"
+  "'hidden parts shown ' + [...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].filter((el) => getComputedStyle(el).display !== 'none').length + ' of ' + [...document.querySelectorAll('[data-name^=\"postB.\"],[data-name^=\"gate.\"],[data-name=\"div.b\"],[data-name=\"tray\"],[data-route=\"b\"]')].length + ' · model lamps drawn ' + [...document.querySelectorAll('[data-model]')].filter((l) => getComputedStyle(l).display !== 'none').length + ' · tags shown ' + [...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').length + ' · vents shown ' + [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length + ' of ' + document.querySelectorAll('[data-unkeyed]').length"
  ],
  [
   "until",

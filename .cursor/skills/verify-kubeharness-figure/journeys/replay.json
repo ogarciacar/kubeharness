@@ -50,6 +50,15 @@
  ],
  [
   "until",
+  "[...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') === '' && document.querySelectorAll('[data-unkeyed]').length > 0 && [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length === document.querySelectorAll('[data-unkeyed]').length",
+  1000
+ ],
+ [
+  "eval",
+  "'lamp tags ' + [...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') + ' · vents shown ' + [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length + ' of ' + document.querySelectorAll('[data-unkeyed]').length"
+ ],
+ [
+  "until",
   "document.querySelector('[data-corner=\"readout\"]').innerText === 'PINNED\\nGateway API v1.6.1 · Envoy Gateway v1.9.3\\nCLUSTER\\nkind v0.33.0 · k8s v1.37.0'",
   1000
  ],
@@ -288,6 +297,15 @@
  [
   "eval",
   "document.querySelector('[data-part=\"plate\"]').textContent"
+ ],
+ [
+  "until",
+  "[...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') === '' && document.querySelectorAll('[data-unkeyed]').length > 0 && [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length === document.querySelectorAll('[data-unkeyed]').length",
+  1000
+ ],
+ [
+  "eval",
+  "'lamp tags ' + [...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') + ' · vents shown ' + [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length + ' of ' + document.querySelectorAll('[data-unkeyed]').length"
  ],
  [
   "until",
@@ -610,6 +628,15 @@
  ],
  [
   "until",
+  "[...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') === '' && document.querySelectorAll('[data-unkeyed]').length > 0 && [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length === document.querySelectorAll('[data-unkeyed]').length",
+  1000
+ ],
+ [
+  "eval",
+  "'lamp tags ' + [...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') + ' · vents shown ' + [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length + ' of ' + document.querySelectorAll('[data-unkeyed]').length"
+ ],
+ [
+  "until",
   "document.querySelector('[data-corner=\"readout\"]').innerText === 'PINNED\\nGateway API v1.6.1 · Envoy Gateway v1.9.3\\nCLUSTER\\nkind v0.33.0 · k8s v1.37.0'",
   1000
  ],
@@ -855,6 +882,15 @@
  ],
  [
   "until",
+  "[...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') === '' && document.querySelectorAll('[data-unkeyed]').length > 0 && [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length === document.querySelectorAll('[data-unkeyed]').length",
+  1000
+ ],
+ [
+  "eval",
+  "'lamp tags ' + [...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') + ' · vents shown ' + [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length + ' of ' + document.querySelectorAll('[data-unkeyed]').length"
+ ],
+ [
+  "until",
   "document.querySelector('[data-corner=\"readout\"]').innerText === 'PINNED\\nGateway API v1.6.1 · agentgateway v1.4.1\\nCLUSTER\\nkind v0.33.0 · k8s v1.37.0'",
   1000
  ],
@@ -1093,6 +1129,15 @@
  [
   "eval",
   "document.querySelector('[data-part=\"plate\"]').textContent"
+ ],
+ [
+  "until",
+  "[...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') === '' && document.querySelectorAll('[data-unkeyed]').length > 0 && [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length === document.querySelectorAll('[data-unkeyed]').length",
+  1000
+ ],
+ [
+  "eval",
+  "'lamp tags ' + [...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') + ' · vents shown ' + [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length + ' of ' + document.querySelectorAll('[data-unkeyed]').length"
  ],
  [
   "until",
@@ -1415,6 +1460,15 @@
  ],
  [
   "until",
+  "[...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') === '' && document.querySelectorAll('[data-unkeyed]').length > 0 && [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length === document.querySelectorAll('[data-unkeyed]').length",
+  1000
+ ],
+ [
+  "eval",
+  "'lamp tags ' + [...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') + ' · vents shown ' + [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length + ' of ' + document.querySelectorAll('[data-unkeyed]').length"
+ ],
+ [
+  "until",
   "document.querySelector('[data-corner=\"readout\"]').innerText === 'PINNED\\nGateway API v1.6.1 · agentgateway v1.4.1\\nCLUSTER\\nkind v0.33.0 · k8s v1.37.0'",
   1000
  ],
@@ -1660,6 +1714,15 @@
  ],
  [
   "until",
+  "[...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') === '' && document.querySelectorAll('[data-unkeyed]').length > 0 && [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length === document.querySelectorAll('[data-unkeyed]').length",
+  1000
+ ],
+ [
+  "eval",
+  "'lamp tags ' + [...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') + ' · vents shown ' + [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length + ' of ' + document.querySelectorAll('[data-unkeyed]').length"
+ ],
+ [
+  "until",
   "document.querySelector('[data-corner=\"readout\"]').innerText === 'PINNED\\nGateway API v1.6.1 · agentgateway v1.4.1\\nCLUSTER\\nkind v0.33.0 · k8s v1.37.0'",
   1000
  ],
@@ -1888,6 +1951,15 @@
  ],
  [
   "until",
+  "[...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') === 'QWEN3,SMOL2,GEMMA' && document.querySelectorAll('[data-unkeyed]').length > 0 && [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length === 0",
+  1000
+ ],
+ [
+  "eval",
+  "'lamp tags ' + [...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') + ' · vents shown ' + [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length + ' of ' + document.querySelectorAll('[data-unkeyed]').length"
+ ],
+ [
+  "until",
   "document.querySelector('[data-corner=\"readout\"]').innerText === 'PINNED\\nGateway API v1.6.1 · agentgateway v1.4.1\\nCLUSTER\\nkind v0.33.0 · k8s v1.37.0'",
   1000
  ],
@@ -1984,7 +2056,7 @@
  ],
  [
   "until",
-  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/qwen/') && document.querySelector('[data-say]').textContent.includes('from unsloth/Qwen3-0.6B-Q8_0') && document.querySelector('[data-part=\"display\"]').textContent === 'QWEN3' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '100'",
+  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/qwen/') && document.querySelector('[data-say]').textContent.includes('from unsloth/Qwen3-0.6B-Q8_0') && document.querySelector('[data-part=\"display\"]').textContent === 'QWEN3' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '100' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '100'",
   60000
  ],
  [
@@ -1997,7 +2069,7 @@
  ],
  [
   "eval",
-  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · bold tags ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
  ],
  [
   "eval",
@@ -2005,7 +2077,7 @@
  ],
  [
   "until",
-  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/smol/') && document.querySelector('[data-say]').textContent.includes('from bartowski/SmolLM2-135M-Instruct-Q8_0') && document.querySelector('[data-part=\"display\"]').textContent === 'SMOL2' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '010'",
+  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/smol/') && document.querySelector('[data-say]').textContent.includes('from bartowski/SmolLM2-135M-Instruct-Q8_0') && document.querySelector('[data-part=\"display\"]').textContent === 'SMOL2' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '010' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '010'",
   60000
  ],
  [
@@ -2018,7 +2090,7 @@
  ],
  [
   "eval",
-  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · bold tags ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
  ],
  [
   "eval",
@@ -2026,7 +2098,7 @@
  ],
  [
   "until",
-  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/gemma/') && document.querySelector('[data-say]').textContent.includes('from ggml-org/gemma-3-270m-it-Q8_0') && document.querySelector('[data-part=\"display\"]').textContent === 'GEMMA' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '001'",
+  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/gemma/') && document.querySelector('[data-say]').textContent.includes('from ggml-org/gemma-3-270m-it-Q8_0') && document.querySelector('[data-part=\"display\"]').textContent === 'GEMMA' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '001' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '001'",
   60000
  ],
  [
@@ -2039,7 +2111,7 @@
  ],
  [
   "eval",
-  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · bold tags ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
  ],
  [
   "eval",
@@ -2047,7 +2119,7 @@
  ],
  [
   "until",
-  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/unknown/') && document.querySelector('[data-kh=\"div\"]').hasAttribute('data-block') && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000'",
+  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/unknown/') && document.querySelector('[data-kh=\"div\"]').hasAttribute('data-block') && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '000'",
   60000
  ],
  [
@@ -2060,11 +2132,11 @@
  ],
  [
   "eval",
-  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · bold tags ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
  ],
  [
   "until",
-  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/smol/') && document.querySelector('[data-say]').textContent.includes('from unsloth/Qwen3-0.6B-Q8_0') && document.querySelector('[data-part=\"display\"]').textContent === 'QWEN3' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '100'",
+  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/smol/') && document.querySelector('[data-say]').textContent.includes('from unsloth/Qwen3-0.6B-Q8_0') && document.querySelector('[data-part=\"display\"]').textContent === 'QWEN3' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '100' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '100'",
   60000
  ],
  [
@@ -2077,7 +2149,7 @@
  ],
  [
   "eval",
-  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · bold tags ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
  ],
  [
   "eval",
@@ -2085,7 +2157,7 @@
  ],
  [
   "until",
-  "document.querySelector('[data-say]').textContent.includes('h.Apply(testdata/k01-route/good)') && document.querySelector('[data-part=\"display\"]').textContent === '' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000'",
+  "document.querySelector('[data-say]').textContent.includes('h.Apply(testdata/k01-route/good)') && document.querySelector('[data-part=\"display\"]').textContent === '' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '000'",
   60000
  ],
  [
@@ -2098,11 +2170,11 @@
  ],
  [
   "eval",
-  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · bold tags ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
  ],
  [
   "until",
-  "document.querySelector('[data-say]').textContent.includes('gw.AwaitRoute(llm)') && document.querySelector('[data-part=\"display\"]').textContent === '' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000'",
+  "document.querySelector('[data-say]').textContent.includes('gw.AwaitRoute(llm)') && document.querySelector('[data-part=\"display\"]').textContent === '' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '000'",
   60000
  ],
  [
@@ -2111,11 +2183,11 @@
  ],
  [
   "eval",
-  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · bold tags ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
  ],
  [
   "until",
-  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/smol/') && document.querySelector('[data-say]').textContent.includes('from bartowski/SmolLM2-135M-Instruct-Q8_0') && document.querySelector('[data-part=\"display\"]').textContent === 'SMOL2' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '010'",
+  "document.querySelector('[data-say]').textContent.includes('POST http://llm.example/m/smol/') && document.querySelector('[data-say]').textContent.includes('from bartowski/SmolLM2-135M-Instruct-Q8_0') && document.querySelector('[data-part=\"display\"]').textContent === 'SMOL2' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '010' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '010'",
   60000
  ],
  [
@@ -2128,11 +2200,11 @@
  ],
  [
   "eval",
-  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · bold tags ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
  ],
  [
   "until",
-  "['cleanup', 'off'].includes(document.querySelector('.kh-stage').dataset.phase) && document.querySelector('[data-part=\"display\"]').textContent === '' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000'",
+  "['cleanup', 'off'].includes(document.querySelector('.kh-stage').dataset.phase) && document.querySelector('[data-part=\"display\"]').textContent === '' && [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') === '000' && [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') === '000'",
   60000
  ],
  [
@@ -2141,7 +2213,7 @@
  ],
  [
   "eval",
-  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
+  "'model lamps ' + [...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('') + ' · bold tags ' + [...document.querySelectorAll('[data-model-label]')].map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('') + ' · display ' + document.querySelector('[data-part=\"display\"]').textContent"
  ],
  [
   "until",

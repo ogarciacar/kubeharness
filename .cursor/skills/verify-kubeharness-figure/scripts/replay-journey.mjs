@@ -86,7 +86,12 @@ const apisShown = ["eval", "[...document.querySelectorAll('.kh-groups[data-on] [
 const sayHas = (text) => `document.querySelector('[data-say]').textContent.includes('${text}')`;
 const display = "document.querySelector('[data-part=\"display\"]').textContent";
 const modelLamps = "[...document.querySelectorAll('[data-model]')].map((l) => (l.hasAttribute('data-on') ? 1 : 0)).join('')";
-const lampsShown = ["eval", `'model lamps ' + ${modelLamps} + ' · display ' + ${display}`];
+const labels = "[...document.querySelectorAll('[data-model-label]')]";
+const tagsShown = `${labels}.filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',')`;
+const boldTags = `${labels}.map((l) => (getComputedStyle(l).fontWeight === '700' ? 1 : 0)).join('')`;
+const ventsShown = "[...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length";
+const lampsShown = ["eval", `'model lamps ' + ${modelLamps} + ' · bold tags ' + ${boldTags} + ' · display ' + ${display}`];
+const tagsOf = (sc) => Object.values(REPLAY[sc].models ?? {}).map((m) => m.tag);
 const headOf = (f, kind) => f.groups.find((g) => g.kind === kind).head;
 const kindsOf = (f) => f.groups.map((g) => g.kind);
 const namesOf = (f) => f.groups.map((g) => `${g.kind} ${g.head.name}`);
@@ -104,6 +109,8 @@ function open(p, sc, f) {
     ["eval", "[...document.querySelectorAll('.kh-controls button')].map((b) => (b.dataset.scenario ?? b.dataset.profile ?? 'tour') + (b.disabled ? ':disabled' : ':on')).join(' ')"],
     ["until", `document.querySelector('[data-part="plate"]').textContent === '${f.cluster}'`, 5000],
     ["eval", `document.querySelector('[data-part="plate"]').textContent`],
+    ["until", `${tagsShown} === '${tagsOf(sc).join(",")}' && document.querySelectorAll('[data-unkeyed]').length > 0 && ${ventsShown} === ${tagsOf(sc).length ? 0 : "document.querySelectorAll('[data-unkeyed]').length"}`, 1000],
+    ["eval", `'lamp tags ' + ${tagsShown} + ' · vents shown ' + ${ventsShown} + ' of ' + document.querySelectorAll('[data-unkeyed]').length`],
     ["until", `${corner("readout")} === 'PINNED\\n${PROFILES[p].pins}\\nCLUSTER\\n${CLUSTER}'`, 1000],
     ["eval", corner("readout")],
     ["until", `${checkLabels} === ${JSON.stringify(f.checks.map((c) => `${c.fn} ${c.label}`).join(" | "))}`, 1000],
@@ -207,8 +214,9 @@ const BODY = {
   K01: (p, f) => {
     if (!f.crossed) throw new Error(`${f.test} on ${f.cluster}: the trace passes but no /m/<alias>/ request was answered under a route that sends it to another alias's backend, so the K01 leg has no crossed answer to wait for`);
     const ids = Object.keys(REPLAY.K01.models);
-    const answered = (alias, id) => `${sayHas(`POST http://llm.example/m/${alias}/`)} && ${sayHas(`from ${id}`)} && ${display} === '${REPLAY.K01.models[id].tag}' && ${modelLamps} === '${ids.map((k) => (k === id ? 1 : 0)).join("")}'`;
-    const dark = `${display} === '' && ${modelLamps} === '${ids.map(() => 0).join("")}'`;
+    const slot = (id) => ids.map((k) => (k === id ? 1 : 0)).join("");
+    const answered = (alias, id) => `${sayHas(`POST http://llm.example/m/${alias}/`)} && ${sayHas(`from ${id}`)} && ${display} === '${REPLAY.K01.models[id].tag}' && ${modelLamps} === '${slot(id)}' && ${boldTags} === '${slot(id)}'`;
+    const dark = `${display} === '' && ${modelLamps} === '${slot()}' && ${boldTags} === '${slot()}'`;
     const own = ids.find((id) => REPLAY.K01.models[id].backend === f.crossed.alias);
     return [
       headsAre(namesOf(f)),
@@ -218,7 +226,7 @@ const BODY = {
         ["shot", `replay-${SHORT[p]}-K01-${REPLAY.K01.models[id].backend}.png`],
         say, lampsShown, pinsOn,
       ]),
-      ["until", `${sayHas("POST http://llm.example/m/unknown/")} && document.querySelector('[data-kh="div"]').hasAttribute('data-block') && ${modelLamps} === '${ids.map(() => 0).join("")}'`, BODY_WAIT],
+      ["until", `${sayHas("POST http://llm.example/m/unknown/")} && document.querySelector('[data-kh="div"]').hasAttribute('data-block') && ${modelLamps} === '${slot()}' && ${boldTags} === '${slot()}'`, BODY_WAIT],
       ["shot", `replay-${SHORT[p]}-K01-unknown.png`],
       say, lampsShown,
       ["until", answered(f.crossed.alias, f.crossed.id), BODY_WAIT],

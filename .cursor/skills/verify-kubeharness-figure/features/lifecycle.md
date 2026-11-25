@@ -31,5 +31,5 @@ Preconditions:
 ## Gotchas
 
 - The cartridge fades in before it drops. A shot taken right as step 5 begins can catch it half transparent, so the journey waits 1.2 s.
-- `[data-report]` shows only `phase=` (plus `profile=` after install) until cleanup. That is deliberate. The real report line prints once, at the end of the run.
+- `[data-report]` shows only `phase=` (after `cluster=` under Envoy Gateway, plus `profile=` after install) until cleanup. That is deliberate. The real report line prints once, at the end of the run.
 - The figure's lifecycle runs in seconds. The report line's durations are the recorded ones, not timers.

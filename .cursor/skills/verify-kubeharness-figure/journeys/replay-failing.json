@@ -50,6 +50,15 @@
  ],
  [
   "until",
+  "[...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') === '' && document.querySelectorAll('[data-unkeyed]').length > 0 && [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length === document.querySelectorAll('[data-unkeyed]').length",
+  1000
+ ],
+ [
+  "eval",
+  "'lamp tags ' + [...document.querySelectorAll('[data-model-label]')].filter((l) => getComputedStyle(l).display !== 'none').map((l) => l.textContent).join(',') + ' · vents shown ' + [...document.querySelectorAll('[data-unkeyed]')].filter((el) => getComputedStyle(el).display !== 'none').length + ' of ' + document.querySelectorAll('[data-unkeyed]').length"
+ ],
+ [
+  "until",
   "document.querySelector('[data-corner=\"readout\"]').innerText === 'PINNED\\nGateway API v1.6.1 · Envoy Gateway v1.9.3\\nCLUSTER\\nkind v0.33.0 · k8s v1.37.0'",
   1000
  ],
