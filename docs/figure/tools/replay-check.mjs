@@ -2,7 +2,8 @@
 // sequence inlined from an earlier recorded agentgateway G02 trace (cluster kh-25c6b51a9caa-2,
 // at 38234 to 38518 ms), where the proxy still served payments after the route
 // reported ResolvedRefs=False, then every recorded trace in traces-dir (default
-// docs/figure/traces).
+// docs/figure/traces), then drives the built replay page in headless Chrome
+// to read the model lamp keys at every step.
 // Prints "replay check passed" or exits 1.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -287,6 +288,35 @@ for (const r of of("K01")) {
 
 execFileSync(process.execPath, ["build.mjs", "--traces", dir], { cwd: fig });
 const html = readFileSync(`${fig}kubeharness-replay.html`, "utf8");
+const keysProbe = (r) => `Array.from({ length: ${r.steps.length} }, (_, step) => {
+  kubeharnessFigure.select(${JSON.stringify(r.profile)}, ${JSON.stringify(r.scenario)}, { step });
+  const shown = (el) => getComputedStyle(el).display !== "none";
+  const slots = (sel, key) => [...document.querySelectorAll(sel)].filter(shown).sort((a, b) => a.dataset[key] - b.dataset[key]);
+  const labels = slots("[data-model-label]", "modelLabel");
+  const lamps = slots("[data-model]", "model");
+  return {
+    tags: labels.map((el) => el.textContent),
+    bold: labels.filter((el) => getComputedStyle(el).fontWeight === "700").map((el) => +el.dataset.modelLabel),
+    lamps: lamps.length,
+    lit: lamps.filter((el) => el.hasAttribute("data-on")).map((el) => +el.dataset.model),
+    vents: [...document.querySelectorAll("[data-unkeyed]")].every(shown),
+  };
+})`;
+const driven = execFileSync(process.execPath, ["tools/drive.mjs", `${fig}kubeharness-replay.html`, JSON.stringify(runs.map((r) => ["eval", keysProbe(r)]))], { cwd: fig, encoding: "utf8" });
+assert.ok(driven.includes("console: clean"), `the replay page's console is clean while it is driven: ${driven.trim().split("\n").at(-1)}`);
+const keys = [...driven.matchAll(/^eval: (.*)$/gm)].map((m) => JSON.parse(m[1]));
+assert.equal(keys.length, runs.length, "one lamp key reading per recorded trace");
+runs.forEach((r, n) => {
+  const tags = Object.values(r.facts.models ?? {}).map((m) => m.tag);
+  keys[n].forEach((k, step) => {
+    const on = r.steps[step].model >= 0 ? [r.steps[step].model] : [];
+    assert.deepEqual(k.tags, tags, `${r.name}: at step ${step} the page labels its lamps ${tags.join(", ") || "with nothing"}, in lamp order`);
+    assert.equal(k.lamps, tags.length, `${r.name}: at step ${step} the page shows one lamp per tag`);
+    assert.equal(k.vents, !tags.length, `${r.name}: at step ${step} post a's vents ${tags.length ? "give way to the lamp keys" : "show"}`);
+    assert.deepEqual(k.lit, on, `${r.name}: at step ${step} (${r.steps[step].say}) ${on.length ? `only lamp ${on[0]} is lit` : "no lamp is lit"}`);
+    assert.deepEqual(k.bold, on, `${r.name}: at step ${step} (${r.steps[step].say}) ${on.length ? `only the tag ${tags[on[0]]} is emphasised` : "no tag is emphasised"}`);
+  });
+});
 const panel = /<aside class="kh-names"[\s\S]*?<\/aside>/.exec(html)[0];
 const lists = panel.match(/<ol class="kh-groups"[\s\S]*?<\/ol><\/li><\/ol>/g);
 assert.equal(lists.length, runs.length, "one group list per recorded trace");

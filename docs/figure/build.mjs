@@ -286,36 +286,43 @@ function leverArm(deg) {
   return k.lineOnTop([0, 0], [Math.cos(t) * LEVER.r, Math.sin(t) * LEVER.r], DIV_H + 3.2, P);
 }
 
-const MODEL_LAMPS = Math.max(0, ...Object.values(M.REPLAY).map((r) => Object.keys(r.models ?? {}).length));
-function modelLamps(name, plan) {
-  const cx = plan.x + plan.w / 2;
+const MODEL_TAGS = Object.fromEntries(Object.entries(M.REPLAY).filter(([, r]) => r.models).map(([id, r]) => [id, Object.values(r.models).map((m) => m.tag)]));
+const MODEL_LAMPS = Math.max(0, ...Object.values(MODEL_TAGS).map((tags) => tags.length));
+const KEY = { lamp: 7.5, tag: 11.5, pitch: 7, size: 6, cap: 0.73 };
+const BEVEL = 0.8;
+function modelLamps(name, plan, rows) {
+  const x = plan.x + KEY.lamp;
   const y = plan.y + plan.d;
-  const z = POST_TOP - 4;
-  for (let i = 0; i < MODEL_LAMPS; i++) {
-    const x = cx + (i - (MODEL_LAMPS - 1) / 2) * 9;
+  rows.forEach((z, i) => {
     const F = G.frameAlong([x, y, z], [0, 1, 0]);
     const shape = R.solid(A.disc(F, 0, 1.4, 2.2, { name: `${name}.model${i}` }));
     put(`${name}.model${i}`, [x, y + 0.7, z], S(G.disc(0, 1.4, 2.2, F, P), { tone: "hi" }), [shape], { attrs: ` data-kh="lamp" data-model="${i}"` });
-  }
+  });
 }
 
 function backend(name, plan, z0, { display = false, part, models = false } = {}) {
   const base = k.insetPlan(plan, -3);
   slab(`${name}.base`, base, z0, 4, { tone: "lo" }, { steps: 4, bevel: 0.5, extra: Dots(k.corners(base, 2.6).map(([x, y]) => at([x, y, z0 + 4])), { size: 0.42 }) });
-  const seams = Ln(k.sideSeam(plan, z0 + 12, P, 4), { tone: "faint" }) + Ln(k.sideSeam(plan, POST_TOP - 8, P, 4), { tone: "faint" });
+  const win = { x: plan.x + 5, y: -(POST_TOP - 12), w: 26, h: 9 };
+  const windowBottom = -win.y - win.h;
+  const bevelTop = z0 + 4 + BEVEL;
+  const keyRows = (count) => Array.from({ length: count }, (_, i) => (windowBottom + bevelTop) / 2 + ((count - 1) / 2 - i) * KEY.pitch);
+  const rows = models ? keyRows(MODEL_LAMPS) : [];
+  const unkeyed = (svg) => (models ? `<g data-unkeyed="">${svg}</g>` : svg);
+  const seams = unkeyed(Ln(k.sideSeam(plan, z0 + 12, P, 4), { tone: "faint" })) + Ln(k.sideSeam(plan, POST_TOP - 8, P, 4), { tone: "faint" });
   let face = "";
   if (display) {
     const m = k.sideMatrix([0, plan.y + plan.d], 0, P, "left");
-    const win = { x: plan.x + 5, y: -(POST_TOP - 12), w: 26, h: 9 };
-    face = `<g transform="${m}"><clipPath id="kh-win"><rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="1.2"/></clipPath><rect class="kh-window" x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="1.2"/><g clip-path="url(#kh-win)"><text class="kh-digits" data-part="display" x="${win.x + win.w - 2}" y="${win.y + win.h - 2}" text-anchor="end" font-size="6.6"></text></g></g>`;
+    const tags = rows.map((z, i) => `<text data-model-label="${i}" x="${plan.x + KEY.tag}" y="${((KEY.size * KEY.cap) / 2 - z).toFixed(2)}" font-size="${KEY.size}"></text>`).join("");
+    face = `<g transform="${m}"><clipPath id="kh-win"><rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="1.2"/></clipPath><rect class="kh-window" x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="1.2"/><g clip-path="url(#kh-win)"><text class="kh-digits" data-part="display" x="${win.x + win.w - 2}" y="${win.y + win.h - 2}" text-anchor="end" font-size="6.6"></text></g>${tags}</g>`;
   }
-  const vents = ventSlots(plan.y + plan.d, plan.x + 8, plan.x + 28, z0 + 26, z0 + 15, 6);
-  slab(`${name}.body`, plan, z0 + 4, POST_TOP - z0 - 4, { tone: "mid" }, { bevel: 0.8, inner: seams, extra: face + vents + Ln(k.planOutline(k.insetPlan(plan, 3), POST_TOP, P), { tone: "faint" }), attrs: named(part) });
+  const vents = unkeyed(ventSlots(plan.y + plan.d, plan.x + 8, plan.x + 28, z0 + 26, z0 + 15, 6));
+  slab(`${name}.body`, plan, z0 + 4, POST_TOP - z0 - 4, { tone: "mid" }, { bevel: BEVEL, inner: seams, extra: face + vents + Ln(k.planOutline(k.insetPlan(plan, 3), POST_TOP, P), { tone: "faint" }), attrs: named(part) });
   const cx = plan.x + plan.w / 2;
   const cy = plan.y + plan.d / 2;
   post(`${name}.lamp.ring`, cx, cy, 6.4, POST_TOP, 1.6, { tone: "lo" }, { steps: 32 });
   post(`${name}.lamp`, cx, cy, 4.6, POST_TOP + 1.6, 2.6, { tone: "hi" }, { steps: 32, attrs: ` data-kh="lamp" data-post="${name}"` });
-  if (models) modelLamps(name, plan);
+  modelLamps(name, plan, rows);
   port(`${name}.port`, plan.x - PORT_T, plan.x, cy, ZT);
 }
 
@@ -399,6 +406,7 @@ const DATA = {
   lever: { r: LEVER.r, z: DIV_H + 3.2, knobZ: DIV_H + 4.4, angles: LEVER.angles },
   lines: LINES,
   model: { PHASES: M.PHASES, LAMPS: M.LAMPS, PROFILES: M.PROFILES, REPORTS: M.REPORTS, BACKENDS: M.BACKENDS, SCENARIOS: M.SCENARIOS, LIFECYCLE: M.LIFECYCLE },
+  tags: MODEL_TAGS,
 };
 if (REPLAYED) Object.assign(DATA, { replay: REPLAYED.steps, cluster: M.CLUSTER });
 
@@ -446,8 +454,8 @@ const body =
       { mark: "edge", label: "Lamps: new, validating, provisioning, wait-usable, ready, test, cleanup" },
     ],
     caption: REPLAYED
-      ? "A replay of real kubeharness e2e runs, one per test and profile, from the trace each run wrote into its test artifact directory. The plate carries the run's real Kind cluster name. Lamps, the cartridge, the lever, the gate valve and every request pulse move at their recorded times: a 2xx that names a backend lights that post, a refused request stops at the valve, an unrouted one at the diverter, and the report line at the end is the one the test logged. Each finished lamp stays dimly lit, so the row fills from new to cleanup; when a run fails, the lamp it stopped at turns red: test for a failed test, else the phase the report names. In G02 the valve follows the route's ResolvedRefs condition; in G03 the lever follows the weights each Apply set once the route reports them, while each pulse goes to the backend that answered; in A01 the MCP port lights for the session and the display shows the tools/call result; in K01 every chat reaches the kronk post, one of its three lamps lights for the model the response names and the display shows that model's tag, so a crossed route shows the wrong model answering. Setup, from New until the test holds a reachable gateway, plays 10 times faster, with each lifecycle phase lit at least 0.6 s. The test body, from that moment to cleanup, plays 20 times slower (K01, 8 times) and holds each step at least 1.2 s so every line can be read, and at most 12 s, so a wait that timed out does not play for minutes; G03's body, 10 s of traffic every 50 ms, plays at real time with at most 4 pulses drawn a second. Add ?setup=N, ?body=N or ?hold=S to change those (?setup=1 plays setup at real time), and ?speed=2 to play everything faster. The numbered pins match the groups on the right, which list the run's real object names and API versions as the trace records them, each group headed by its primary object: a row appears when its object is applied or Ready, brightens with its part while a step touches it, and is struck through once the object is gone. Left out are objects with no part on the bench, such as the backends' Deployments and anything in kube-system; the profile install's CRDs, RBAC and controller objects are one count in the Gateway group. Under them, CHECKS has one box per Await call the test made, filled when the call returns: green when it passed, red when it failed the test. The badge by the title reads RUNNING until the report line, then PASS when its cause is ok and FAIL for any other cause, which includes a failed t.Errorf the boxes do not show. The bottom-right corner names the profile's pinned versions and the Kind cluster. The top-right corner counts the replay's own elapsed time, not the trace's, so a stretch where nothing moves still shows time passing."
-      : "Each run builds a fresh Kind cluster (the plate), installs one gateway profile (the cartridge drops into its socket), applies the scenario's manifests and sends real HTTP from the test process through a port-forward. The diverter's lever is the HTTPRoute: in G01 it picks a backend by host and path, and with no matching rule the request stops at the diverter; in G03 it flips the weights 100/0 and 0/100 under traffic. The gate valve on the front line is the ReferenceGrant into the second namespace (G02): closed, the route reports RefNotPermitted and the payments counter stays flat. A01 runs only under agentgateway and calls the calculator's sum tool through an AgentgatewayBackend. K01 runs only under agentgateway and sends chats to three AgentgatewayBackends in front of one kronk Pod; a lamp on the post shows which of its three models answered, and the display its tag. Each finished lamp stays dimly lit, so the row fills from new to cleanup. At cleanup the cartridge lifts out. Report-line values are the recorded runs in README.md and CONCEPT.md; the motion runs faster than those durations.",
+      ? "A replay of real kubeharness e2e runs, one per test and profile, from the trace each run wrote into its test artifact directory. The plate carries the run's real Kind cluster name. Lamps, the cartridge, the lever, the gate valve and every request pulse move at their recorded times: a 2xx that names a backend lights that post, a refused request stops at the valve, an unrouted one at the diverter, and the report line at the end is the one the test logged. Each finished lamp stays dimly lit, so the row fills from new to cleanup; when a run fails, the lamp it stopped at turns red: test for a failed test, else the phase the report names. In G02 the valve follows the route's ResolvedRefs condition; in G03 the lever follows the weights each Apply set once the route reports them, while each pulse goes to the backend that answered; in A01 the MCP port lights for the session and the display shows the tools/call result; in K01 every chat reaches the kronk post, the lamp under the display that carries the tag of the model the response names lights, its tag turns bold and the display shows that tag, so a crossed route shows the wrong model answering. Setup, from New until the test holds a reachable gateway, plays 10 times faster, with each lifecycle phase lit at least 0.6 s. The test body, from that moment to cleanup, plays 20 times slower (K01, 8 times) and holds each step at least 1.2 s so every line can be read, and at most 12 s, so a wait that timed out does not play for minutes; G03's body, 10 s of traffic every 50 ms, plays at real time with at most 4 pulses drawn a second. Add ?setup=N, ?body=N or ?hold=S to change those (?setup=1 plays setup at real time), and ?speed=2 to play everything faster. The numbered pins match the groups on the right, which list the run's real object names and API versions as the trace records them, each group headed by its primary object: a row appears when its object is applied or Ready, brightens with its part while a step touches it, and is struck through once the object is gone. Left out are objects with no part on the bench, such as the backends' Deployments and anything in kube-system; the profile install's CRDs, RBAC and controller objects are one count in the Gateway group. Under them, CHECKS has one box per Await call the test made, filled when the call returns: green when it passed, red when it failed the test. The badge by the title reads RUNNING until the report line, then PASS when its cause is ok and FAIL for any other cause, which includes a failed t.Errorf the boxes do not show. The bottom-right corner names the profile's pinned versions and the Kind cluster. The top-right corner counts the replay's own elapsed time, not the trace's, so a stretch where nothing moves still shows time passing."
+      : "Each run builds a fresh Kind cluster (the plate), installs one gateway profile (the cartridge drops into its socket), applies the scenario's manifests and sends real HTTP from the test process through a port-forward. The diverter's lever is the HTTPRoute: in G01 it picks a backend by host and path, and with no matching rule the request stops at the diverter; in G03 it flips the weights 100/0 and 0/100 under traffic. The gate valve on the front line is the ReferenceGrant into the second namespace (G02): closed, the route reports RefNotPermitted and the payments counter stays flat. A01 runs only under agentgateway and calls the calculator's sum tool through an AgentgatewayBackend. K01 runs only under agentgateway and sends chats to three AgentgatewayBackends in front of one kronk Pod; three lamps under the post's display each carry a model's tag, the lamp of the model that answered lights, and the display shows its tag. Each finished lamp stays dimly lit, so the row fills from new to cleanup. At cleanup the cartridge lifts out. Report-line values are the recorded runs in README.md and CONCEPT.md; the motion runs faster than those durations.",
     body: REPLAYED ? `<div class="kh-split"><div class="kh-main">${stage}${controls}</div>${namesPanel()}</div>` : `${stage}${controls}`,
   });
 

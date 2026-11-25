@@ -176,7 +176,8 @@ export const LIFECYCLE = [
 // - install: the part that counts the objects the profile install applies
 //   (CRDs, RBAC, the controller), instead of listing them;
 // - models: null, or each model id a response body's "model" names, in
-//   lamp order, with its display tag and the AgentgatewayBackend that pins it;
+//   lamp order, with the tag that its lamp's label and the display show, and
+//   the AgentgatewayBackend that pins it;
 // - body: the test body's time map (replay.mjs timeMap): how many times
 //   slower it plays, its minimum hold per step, and at most how many pulses
 //   it draws per second (none means every one).

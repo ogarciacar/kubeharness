@@ -28,6 +28,7 @@ const display = svg.querySelector('[data-part="display"]');
 const plate = svg.querySelector('[data-part="plate"]');
 const mcp = svg.querySelector(".kh-mcp");
 const modelLamps = $$("[data-model]");
+const modelLabels = $$("[data-model-label]");
 const gateBody = svg.querySelector('[data-kh="gate"]');
 const divBody = svg.querySelector('[data-kh="div"]');
 const tray = svg.querySelector('[data-kh="tray"]');
@@ -157,6 +158,7 @@ function begin(profile, scenario) {
   state.cartOpacity = 0;
   bench.setAttribute("data-profile", profile);
   bench.toggleAttribute("data-models", state.steps.some((s) => s.model !== undefined));
+  for (const el of modelLabels) el.textContent = D.tags[scenario]?.[el.dataset.modelLabel] ?? "";
   bench.toggleAttribute("data-one-backend", M.BACKENDS[scenario].b == null);
   for (const g of [...groups, ...checkLists]) g.toggleAttribute("data-on", g.dataset.run === `${profile} ${scenario}`);
   const list = groups.find((g) => g.hasAttribute("data-on"));
@@ -213,6 +215,7 @@ function enter(i, carry = 0) {
 
 function showModel(slot) {
   for (const el of modelLamps) el.toggleAttribute("data-on", +el.dataset.model === slot);
+  for (const el of modelLabels) el.toggleAttribute("data-on", +el.dataset.modelLabel === slot);
 }
 
 function showClock(s) {
